@@ -29,6 +29,7 @@ contract VotingSystem {
         uint256 candidateCount;
         uint256 voterCount;
         mapping(uint256 => Candidate) candidates;
+        mapping(bytes32 => bool) candidateNameExists;
         mapping(address => bool) hasVoted;
         mapping(address => uint256) votedCandidate; // для перевірки голосу
     }
@@ -130,7 +131,14 @@ contract VotingSystem {
         Election storage e = elections[_electionId];
         require(e.candidateCount < MAX_CANDIDATES, "Max candidates");
 
+        bytes32 nameHash = keccak256(abi.encodePacked(_name));
+        require(
+            !e.candidateNameExists[nameHash],
+            "Candidate name already exists"
+        );
+
         e.candidates[e.candidateCount] = Candidate(e.candidateCount, _name, 0);
+        e.candidateNameExists[nameHash] = true;
         e.candidateCount++;
     }
 
@@ -226,11 +234,22 @@ contract VotingSystem {
         external
         view
         validElection(_electionId)
-        returns (bool hasVoted, uint256 candidateId)
+        returns (
+            bool hasVoted,
+            uint256 candidateId,
+            string memory candidateName
+        )
     {
         Election storage e = elections[_electionId];
         hasVoted = e.hasVoted[msg.sender];
-        candidateId = hasVoted ? e.votedCandidate[msg.sender] : 0;
+
+        if (hasVoted) {
+            candidateId = e.votedCandidate[msg.sender];
+            candidateName = e.candidates[candidateId].name;
+        } else {
+            candidateId = type(uint256).max; // Спеціальне значення "не проголосував"
+            candidateName = "";
+        }
     }
 
     function getActiveElections()
@@ -331,13 +350,17 @@ contract VotingSystem {
     function getElectionsByIds(
         uint256[] calldata ids
     ) external view returns (ElectionWithCandidates[] memory) {
-        ElectionWithCandidates[] memory result = new ElectionWithCandidates[](
+        // Тимчасовий масив максимальної довжини
+        ElectionWithCandidates[] memory temp = new ElectionWithCandidates[](
             ids.length
         );
+        uint256 count = 0;
 
         for (uint256 i = 0; i < ids.length; i++) {
             uint256 id = ids[i];
-            require(id < electionCounter, "Invalid election ID");
+            if (id >= electionCounter) {
+                continue; // Пропускаємо невалідний ID
+            }
 
             Election storage e = elections[id];
             CandidateView[] memory candidates = new CandidateView[](
@@ -353,7 +376,7 @@ contract VotingSystem {
                 });
             }
 
-            result[i] = ElectionWithCandidates({
+            temp[count++] = ElectionWithCandidates({
                 id: e.id,
                 name: e.name,
                 startTime: e.startTime,
@@ -367,16 +390,34 @@ contract VotingSystem {
             });
         }
 
+        // Копіюємо лише заповнені елементи
+        ElectionWithCandidates[] memory result = new ElectionWithCandidates[](
+            count
+        );
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = temp[i];
+        }
+
         return result;
     }
 
     function getCandidates(
         uint256 _electionId
-    ) external view validElection(_electionId) returns (Candidate[] memory) {
+    )
+        external
+        view
+        validElection(_electionId)
+        returns (CandidateView[] memory)
+    {
         Election storage e = elections[_electionId];
-        Candidate[] memory result = new Candidate[](e.candidateCount);
+        CandidateView[] memory result = new CandidateView[](e.candidateCount);
         for (uint256 i = 0; i < e.candidateCount; i++) {
-            result[i] = e.candidates[i];
+            Candidate storage c = e.candidates[i];
+            result[i] = CandidateView({
+                id: c.id,
+                name: c.name,
+                voteCount: c.voteCount
+            });
         }
         return result;
     }
