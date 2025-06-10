@@ -143,33 +143,29 @@ export function Navbar() {
         <h1 className="text-base font-bold md:text-2xl">ChainVote</h1>
       </Link>
 
-      <div className="flex items-center gap-x-2 ">
-        <div>
+      <div className="flex items-center gap-x-2">
           <Toggle
             variant="outline"
-            className="cursor-pointer transform border-1 data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted"
+            className="cursor-pointer transform border-1 data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted h-[42px] w-[42px] flex items-center justify-center max-md:h-[34px] max-md:w-[34px]"
             pressed={!isDark}
             onClick={toggleTheme}
             aria-label={`Switch to ${!isDark ? "light" : "dark"} mode`}
           >
             {
-              isDark ? <Moon size={16} strokeWidth={2} className="transition-all" />
-                : <Sun size={16} strokeWidth={2} className="transition-all" />
+              isDark ? <Moon size={16} strokeWidth={2} className="transition-all max-md:size-3" />
+                : <Sun size={16} strokeWidth={2} className="transition-all max-md:size-3" />
             }
           </Toggle>
-        </div>
-        <div>
+          <div className="flex items-center">
           <Link href={'/login'}
-            className="w-24 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-32 dark:border-gray-600 dark:bg-black dark:text-white dark:hover:bg-gray-800">
+            className="w-24 transform max-md:text-xs cursor-pointer mr-2 rounded-lg border-1 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-32 dark:border-gray-600 dark:bg-black dark:text-white dark:hover:bg-gray-800">
             Login
           </Link>
-        </div>
-        <div>
           <Link href={'/signup'}
             className="w-24 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200">
             Sign Up
           </Link>
-        </div>
+          </div>
       </div>
 
     </nav>
