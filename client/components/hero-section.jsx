@@ -143,10 +143,10 @@ export function Navbar() {
         <h1 className="text-base font-bold md:text-2xl">ChainVote</h1>
       </Link>
 
-      <div className="flex items-center gap-x-2">
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-2">
           <Toggle
             variant="outline"
-            className="cursor-pointer transform border-1 data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted h-[42px] w-[42px] flex items-center justify-center max-md:h-[34px] max-md:w-[34px]"
+            className="max-md:mt-[3px] cursor-pointer transform border-1 data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted h-[37px] w-[37px] flex items-center justify-center max-md:h-[32px] max-md:w-[34px]"
             pressed={!isDark}
             onClick={toggleTheme}
             aria-label={`Switch to ${!isDark ? "light" : "dark"} mode`}
@@ -156,7 +156,7 @@ export function Navbar() {
                 : <Sun size={16} strokeWidth={2} className="transition-all max-md:size-3" />
             }
           </Toggle>
-          <div className="flex items-center">
+          <div>
           <Link href={'/login'}
             className="w-24 transform max-md:text-xs cursor-pointer mr-2 rounded-lg border-1 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-32 dark:border-gray-600 dark:bg-black dark:text-white dark:hover:bg-gray-800">
             Login
