@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useId } from "react";
+import { useRouter } from 'next/navigation'
 
 
 export default function SignupForm() {
@@ -24,6 +25,7 @@ export default function SignupForm() {
   const [errors, setErrors] = useState([]);
   const [generalError, setGeneralError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,7 +66,9 @@ export default function SignupForm() {
       if (res.status === 201) {
         const data = await res.json();
 
-        localStorage.setItem('access_token', data.access_token);
+        // localStorage.setItem('access_token', data.access_token);
+        document.cookie = `access_token=${data.access_token}; Path=/; Secure; SameSite=Lax`;
+        router.push('/dashboard')
         // To DO: redirect to dashboard
       } else {
         let data = await res.json()

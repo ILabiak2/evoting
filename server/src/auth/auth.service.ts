@@ -2,7 +2,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import {CreateUserDto} from './dto/create-user.dto'
+import { CreateUserDto } from './dto/create-user.dto';
+import { UUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +11,22 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
+
+  async getUserData(userId: UUID) {
+    const userData = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        avatar_url: true,
+      }
+    });
+
+    if (!userData) throw new UnauthorizedException('No user');
+    return userData;
+  }
 
   async register(createUserDto: CreateUserDto) {
     const existingUser = await this.prisma.users.findUnique({

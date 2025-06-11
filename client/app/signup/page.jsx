@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, } from 'react';
 import SignupForm from '@/components/signup-form';
-import { Navbar } from '@/components/hero-section';
+import { Navbar } from '@/components/navbar';
 import { cn } from "@/lib/utils";
 
 
