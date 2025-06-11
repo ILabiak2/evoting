@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import {CreateUserDto} from './dto/create-user.dto'
 
 @Injectable()
 export class AuthService {
@@ -10,27 +11,30 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(email: string, password: string, name?: string) {
+  async register(createUserDto: CreateUserDto) {
     const existingUser = await this.prisma.users.findUnique({
-      where: { email },
+      where: { email: createUserDto.email },
     });
     if (existingUser)
       throw new UnauthorizedException('Email already registered');
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(createUserDto.password, 10);
 
-    const user = await this.prisma.users.create({
-      data: {
-        email,
-        name,
-        auth_providers: {
-          create: {
-            provider: 'email',
-            provider_user_id: email,
-            password_hash,
-          },
+    const signupData = {
+      email: createUserDto.email,
+      name: createUserDto.name,
+      role: createUserDto.role == 'creator' ? 'creator' : 'user',
+      auth_providers: {
+        create: {
+          provider: 'email',
+          provider_user_id: createUserDto.email,
+          password_hash,
         },
       },
+    };
+
+    const user = await this.prisma.users.create({
+      data: signupData,
     });
 
     return this._generateToken(user);
@@ -53,7 +57,7 @@ export class AuthService {
 
   async validateOAuthLogin(profile: any) {
     const { id, emails, displayName, photos } = profile;
-  
+
     let user = await this.prisma.auth_providers.findFirst({
       where: {
         provider: 'google',
@@ -61,7 +65,7 @@ export class AuthService {
       },
       include: { users: true },
     });
-  
+
     if (!user) {
       const newUser = await this.prisma.users.create({
         data: {
@@ -76,10 +80,10 @@ export class AuthService {
           },
         },
       });
-  
+
       return this._generateToken(newUser);
     }
-  
+
     return this._generateToken(user.users);
   }
 
