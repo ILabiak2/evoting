@@ -68,7 +68,7 @@ export default function SignupForm() {
 
       if (res.status === 201) {
         const data = await res.json();
-        document.cookie = `access_token=${data.access_token}; Path=/; Secure; SameSite=Lax; Max-Age=1296000`;
+        document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Max-Age=1296000`;
         router.push('/dashboard')
       } else {
         let data = await res.json()
