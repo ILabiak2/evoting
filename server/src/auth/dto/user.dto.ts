@@ -43,6 +43,16 @@ export class CreateUserDto {
   role: BranchOperatorRole;
 }
 
+export class LoginUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(20)
+  password: string;
+}
+
 
 export class ChangeUserPasswordDto {
   @IsEmail()

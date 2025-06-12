@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto, LoginUserDto } from './dto/user.dto';
 import { UUID } from 'crypto';
 
 @Injectable()
@@ -57,16 +57,16 @@ export class AuthService {
     return this._generateToken(user);
   }
 
-  async login(email: string, password: string) {
+  async login(loginUserDto: LoginUserDto) {
     const provider = await this.prisma.auth_providers.findFirst({
-      where: { provider: 'email', provider_user_id: email },
+      where: { provider: 'email', provider_user_id: loginUserDto.email },
       include: { users: true },
     });
 
     if (!provider || !provider.password_hash)
       throw new UnauthorizedException('Invalid credentials');
 
-    const valid = await bcrypt.compare(password, provider.password_hash);
+    const valid = await bcrypt.compare(loginUserDto.password, provider.password_hash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
     return this._generateToken(provider.users);

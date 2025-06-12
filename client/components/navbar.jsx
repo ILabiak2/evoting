@@ -10,11 +10,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bolt, BookOpen, CircleUserRound, Layers2, LogOut, Pin, UserPen } from "lucide-react";
+import { Bolt, BookOpen, CircleUserRound, Layers2, LogOut, Pin, UserPen, UserRound } from "lucide-react";
 import Link from 'next/link'
 import { Toggle } from "@/components/ui/toggle";
 import { Moon, Sun } from "lucide-react";
-<div>
+import { useRouter } from 'next/navigation'
+
+
+{/* <div>
     <Link href={'/login'}
         className="w-24 transform max-md:text-xs cursor-pointer mr-2 rounded-lg border-1 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-32 dark:border-gray-600 dark:bg-black dark:text-white dark:hover:bg-gray-800">
         Login
@@ -23,12 +26,13 @@ import { Moon, Sun } from "lucide-react";
         className="w-24 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200">
         Sign Up
     </Link>
-</div>
+</div> */}
 
 export function Navbar() {
     const [isDark, setIsDark] = useState(null)
     const [isMonted, setIsMounted] = useState(false)
     const [user, setUser] = useState(null)
+    const router = useRouter()
 
     // Load theme on first render
     useEffect(() => {
@@ -67,6 +71,11 @@ export function Navbar() {
         setIsDark(newTheme)
         localStorage.setItem('theme', newTheme ? 'dark' : 'light')
         document.documentElement.classList.toggle('dark', newTheme)
+    }
+
+    const handleLogout = () => {
+        document.cookie = 'access_token=; Path=/; Max-Age=0';
+        router.push('/')
     }
 
     if (isDark === null) return null
@@ -122,7 +131,7 @@ export function Navbar() {
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuGroup>
-                                            <DropdownMenuItem>
+                                            <DropdownMenuItem onClick={()=> {router.push('/dashboard')}}>
                                                 <Bolt size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
                                                 <span>Vote</span>
                                             </DropdownMenuItem>
@@ -132,7 +141,7 @@ export function Navbar() {
                                             </DropdownMenuItem>
                                         </DropdownMenuGroup>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleLogout}>
                                             <LogOut size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
                                             <span>Logout</span>
                                         </DropdownMenuItem>
