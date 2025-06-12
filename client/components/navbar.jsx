@@ -75,7 +75,7 @@ export function Navbar() {
 
     const handleLogout = () => {
         document.cookie = 'access_token=; Path=/; Max-Age=0';
-        router.push('/')
+        window.location.reload();
     }
 
     if (isDark === null) return null
@@ -109,7 +109,7 @@ export function Navbar() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <button size="icon" variant="outline" aria-label="Open account menu"
-                                        className='max-md:mt-[3px] dark:border-neutral-800 rounded-md text-sm cursor-pointer transform border-1 transition-colors hover:bg-muted hover:text-muted-foreground data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted h-[37px] w-[37px] flex items-center justify-center max-md:h-[32px] max-md:w-[34px]'>
+                                            className='max-md:mt-[3px] dark:border-neutral-800 rounded-md text-sm cursor-pointer transform border-1 transition-colors hover:bg-muted hover:text-muted-foreground data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted h-[37px] w-[37px] flex items-center justify-center max-md:h-[32px] max-md:w-[34px]'>
                                             <CircleUserRound size={16} strokeWidth={2} aria-hidden="true" />
                                         </button>
                                     </DropdownMenuTrigger>
@@ -131,7 +131,7 @@ export function Navbar() {
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuGroup>
-                                            <DropdownMenuItem onClick={()=> {router.push('/dashboard')}}>
+                                            <DropdownMenuItem onClick={() => { router.push('/dashboard') }}>
                                                 <Bolt size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
                                                 <span>Vote</span>
                                             </DropdownMenuItem>
