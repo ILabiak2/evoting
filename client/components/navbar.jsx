@@ -15,53 +15,19 @@ import Link from 'next/link'
 import { Toggle } from "@/components/ui/toggle";
 import { Moon, Sun } from "lucide-react";
 import { useRouter } from 'next/navigation'
-
-
-{/* <div>
-    <Link href={'/login'}
-        className="w-24 transform max-md:text-xs cursor-pointer mr-2 rounded-lg border-1 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-32 dark:border-gray-600 dark:bg-black dark:text-white dark:hover:bg-gray-800">
-        Login
-    </Link>
-    <Link href={'/signup'}
-        className="w-24 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200">
-        Sign Up
-    </Link>
-</div> */}
+import { useAuth } from '@/app/context/AuthContext';
 
 export function Navbar() {
     const [isDark, setIsDark] = useState(null)
-    const [isMonted, setIsMounted] = useState(false)
-    const [user, setUser] = useState(null)
+    const { user, loading } = useAuth();
     const router = useRouter()
 
-    // Load theme on first render
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme')
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
         const isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark)
         setIsDark(isDarkMode)
         document.documentElement.classList.toggle('dark', isDarkMode)
-
-        fetch('/api/server/auth/me', {
-            method: 'GET',
-            credentials: 'include', // important: send cookies
-        })
-            .then((res) => {
-                if (res.ok) {
-                    return res.json()
-                } else {
-                    throw new Error('Not authenticated')
-                }
-            })
-            .then((user) => {
-                console.log('Logged in user:', user)
-                setUser(user)
-                setIsMounted(true)
-            })
-            .catch(() => {
-                // document.cookie = 'access_token=; Max-Age=0; path=/;';
-                setIsMounted(true)
-            })
     }, [])
 
 
@@ -90,7 +56,7 @@ export function Navbar() {
             </Link>
 
             {
-                isMonted && (
+                !loading && (
                     <div className="grid grid-cols-[auto_1fr] items-center gap-x-2">
                         <Toggle
                             variant="outline"
