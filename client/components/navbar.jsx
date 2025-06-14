@@ -10,7 +10,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bolt, BookOpen, CircleUserRound, Layers2, LogOut, Pin, UserPen, UserRound } from "lucide-react";
+import { Bolt, BookOpen, CircleUserRound, Layers2, LogOut, User } from "lucide-react";
 import Link from 'next/link'
 import { Toggle } from "@/components/ui/toggle";
 import { Moon, Sun } from "lucide-react";
@@ -81,13 +81,16 @@ export function Navbar() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent side="bottom" align="end" className="max-w-64">
                                         <DropdownMenuLabel className="flex items-start gap-3">
-                                            <img
-                                                src={user?.avatar_url}
+                                            {/* <img
+                                                src={user?.avatar_url || ''}
                                                 alt="Avatar"
                                                 width={32}
                                                 height={32}
+                                                loading="lazy"
+                                                decoding="async"
                                                 className="shrink-0 rounded-full"
-                                            />
+                                            /> */}
+                                            <User size={32} className="shrink-0 text-black dark:text-white" />
                                             <div className="flex min-w-0 flex-col">
                                                 <span className="truncate text-sm font-medium text-foreground">{user?.name}</span>
                                                 <span className="truncate text-xs font-normal text-muted-foreground">

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 import { motion } from "motion/react";
 import { Navbar } from '@/components/navbar'
+import Footer from '@/components/footer'
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import {
   ShieldCheck,
@@ -89,6 +90,7 @@ export function HeroSectionOne() {
         </motion.div>
         <FeautesGrid />
       </div>
+      <Footer />
     </div>
   );
 }
