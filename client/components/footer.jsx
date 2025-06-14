@@ -4,7 +4,7 @@ import { Github, Mail, Globe, Twitter } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="mt-8 w-full border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-black">
+    <footer className="mt-8 w-full border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
       <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 md:grid-cols-3 text-sm">
           {/* Logo + Tagline */}
