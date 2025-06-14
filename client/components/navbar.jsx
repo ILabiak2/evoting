@@ -82,7 +82,7 @@ export function Navbar() {
                                     <DropdownMenuContent side="bottom" align="end" className="max-w-64">
                                         <DropdownMenuLabel className="flex items-start gap-3">
                                             <img
-                                                src="https://originui.com/avatar.jpg"
+                                                src={user?.avatar_url}
                                                 alt="Avatar"
                                                 width={32}
                                                 height={32}
