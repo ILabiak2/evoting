@@ -118,6 +118,15 @@ export default function Login() {
           Sign in &rarr;
           <BottomGradient />
         </button>
+        <p className="mt-4 text-sm text-center text-neutral-600 dark:text-neutral-300">
+          Don’t have an account?{' '}
+          <a
+            href="/signup"
+            className="font-medium text-black dark:text-white hover:underline"
+          >
+            Sign up
+          </a>
+        </p>
 
         <div
           className="my-8 h-[1px] w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent dark:via-neutral-700" />
