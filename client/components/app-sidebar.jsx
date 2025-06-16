@@ -11,8 +11,10 @@ import { User } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useAuth } from '@/app/context/AuthContext';
 
 export default function AppSidebar() {
+    const { user } = useAuth();
     const links = [
         {
             label: "Dashboard",
@@ -69,8 +71,8 @@ export default function AppSidebar() {
                     <div>
                         <SidebarLink
                             link={{
-                                label: "Manu Arora",
-                                href: "#",
+                                label: `${user?.name}`,
+                                href: "/profile",
                                 icon: (
                                     //   <img
                                     //     src="https://assets.aceternity.com/manu.png"
@@ -119,9 +121,6 @@ export const LogoIcon = () => {
 const Dashboard = () => {
     return (
         <div className="flex flex-1 flex-col">
-            {/* <div className="hidden md:flex w-full items-center justify-end border-t bg-white dark:bg-neutral-950 border-neutral-200 px-0 py-2 dark:border-neutral-800 min-md:pl-10 min-md:pr-10">
-            <ThemeToggle />
-        </div> */}
             <div
                 className="flex h-full w-full flex-1 flex-col gap-2  border-neutral-200 bg-white p-2 md:p-10 dark:border-neutral-700 dark:bg-neutral-950">
                 <div className="flex gap-2">

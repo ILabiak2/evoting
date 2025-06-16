@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Bolt, BookOpen, CircleUserRound, Layers2, LogOut, User } from "lucide-react";
 import Link from 'next/link'
-import { Toggle } from "@/components/ui/toggle";
-import { Moon, Sun } from "lucide-react";
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/context/AuthContext';
 import { ThemeToggle } from '@/components/theme-toggle'
