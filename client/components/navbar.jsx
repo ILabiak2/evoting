@@ -16,35 +16,16 @@ import { Toggle } from "@/components/ui/toggle";
 import { Moon, Sun } from "lucide-react";
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/context/AuthContext';
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export function Navbar() {
-    const [isDark, setIsDark] = useState(null)
     const { user, loading } = useAuth();
     const router = useRouter()
-
-    useEffect(() => {
-        const savedTheme = localStorage.getItem('theme')
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        const isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark)
-        setIsDark(isDarkMode)
-        document.documentElement.classList.toggle('dark', isDarkMode)
-    }, [])
-
-
-    // Toggle theme
-    const toggleTheme = () => {
-        const newTheme = !isDark
-        setIsDark(newTheme)
-        localStorage.setItem('theme', newTheme ? 'dark' : 'light')
-        document.documentElement.classList.toggle('dark', newTheme)
-    }
 
     const handleLogout = () => {
         document.cookie = 'access_token=; Path=/; Max-Age=0';
         window.location.reload();
     }
-
-    if (isDark === null) return null
 
     return (
         <nav
@@ -58,18 +39,7 @@ export function Navbar() {
             {
                 !loading && (
                     <div className="grid grid-cols-[auto_1fr] items-center gap-x-2">
-                        <Toggle
-                            variant="outline"
-                            className="max-md:mt-[3px] cursor-pointer transform border-1 data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted h-[37px] w-[37px] flex items-center justify-center max-md:h-[32px] max-md:w-[34px]"
-                            pressed={!isDark}
-                            onClick={toggleTheme}
-                            aria-label={`Switch to ${!isDark ? "light" : "dark"} mode`}
-                        >
-                            {
-                                isDark ? <Moon size={16} strokeWidth={2} className="transition-all max-md:size-3" />
-                                    : <Sun size={16} strokeWidth={2} className="transition-all max-md:size-3" />
-                            }
-                        </Toggle>
+                        <ThemeToggle />
                         {user ? (
                             <div>
                                 <DropdownMenu>
