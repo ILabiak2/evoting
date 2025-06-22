@@ -1,9 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, LoginUserDto } from './dto/user.dto';
 import { UUID } from 'crypto';
+import { Wallet } from 'ethers';
+import { SecretClient } from '@azure/keyvault-secrets';
+import { ClientSecretCredential } from '@azure/identity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +29,7 @@ export class AuthService {
         name: true,
         role: true,
         avatar_url: true,
-      }
+      },
     });
 
     if (!userData) throw new UnauthorizedException('No user');
@@ -37,24 +45,62 @@ export class AuthService {
 
     const password_hash = await bcrypt.hash(createUserDto.password, 10);
 
-    const signupData = {
-      email: createUserDto.email,
-      name: createUserDto.name,
-      role: createUserDto.role == 'creator' ? 'creator' : 'user',
-      auth_providers: {
-        create: {
-          provider: 'email',
-          provider_user_id: createUserDto.email,
-          password_hash,
-        },
-      },
-    };
+    // Create wallet first
+    const wallet = Wallet.createRandom();
+    const privateKey = wallet.privateKey;
+    const publicAddress = wallet.address;
+    const userId = uuidv4();
+    const vaultKeyName = `wallet-key-${userId}`;
 
-    const user = await this.prisma.users.create({
-      data: signupData,
-    });
+    // Init Azure Key Vault client
+    const credential = new ClientSecretCredential(
+      process.env.AZURE_TENANT_ID,
+      process.env.AZURE_CLIENT_ID,
+      process.env.AZURE_CLIENT_SECRET,
+    );
+    const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
+    const vaultClient = new SecretClient(vaultUrl, credential);
 
-    return this._generateToken(user);
+    try {
+      // Store private key in Key Vault FIRST — before DB write
+      await vaultClient.setSecret(vaultKeyName, privateKey);
+
+      // Wrap all Prisma operations in a single transaction
+      const [user] = await this.prisma.$transaction([
+        this.prisma.users.create({
+          data: {
+            id: userId,
+            email: createUserDto.email,
+            name: createUserDto.name,
+            role: createUserDto.role === 'creator' ? 'creator' : 'user',
+            auth_providers: {
+              create: {
+                provider: 'email',
+                provider_user_id: createUserDto.email,
+                password_hash,
+              },
+            },
+          },
+        }),
+        this.prisma.wallets.create({
+          data: {
+            public_address: publicAddress,
+            vault_key_name: vaultKeyName,
+            user_id: userId
+          },
+        }),
+      ]);
+
+      return this._generateToken(user);
+    } catch (err) {
+      // Optional: delete secret from Key Vault if DB transaction failed
+      try {
+        await vaultClient.beginDeleteSecret(vaultKeyName);
+      } catch (e) {
+        console.error('Failed to cleanup key vault secret:', e.message);
+      }
+      throw new InternalServerErrorException('Registration failed');
+    }
   }
 
   async login(loginUserDto: LoginUserDto) {
@@ -66,7 +112,10 @@ export class AuthService {
     if (!provider || !provider.password_hash)
       throw new UnauthorizedException('Invalid credentials');
 
-    const valid = await bcrypt.compare(loginUserDto.password, provider.password_hash);
+    const valid = await bcrypt.compare(
+      loginUserDto.password,
+      provider.password_hash,
+    );
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
     return this._generateToken(provider.users);
@@ -75,7 +124,8 @@ export class AuthService {
   async validateOAuthLogin(profile: any) {
     const { id, emails, displayName, photos } = profile;
 
-    let user = await this.prisma.auth_providers.findFirst({
+    // Check if user already exists
+    const existing = await this.prisma.auth_providers.findFirst({
       where: {
         provider: 'google',
         provider_user_id: id,
@@ -83,25 +133,66 @@ export class AuthService {
       include: { users: true },
     });
 
-    if (!user) {
-      const newUser = await this.prisma.users.create({
-        data: {
-          email: emails[0].value,
-          name: displayName,
-          avatar_url: photos?.[0]?.value,
-          auth_providers: {
-            create: {
-              provider: 'google',
-              provider_user_id: id,
-            },
-          },
-        },
-      });
-
-      return this._generateToken(newUser);
+    if (existing) {
+      return this._generateToken(existing.users);
     }
 
-    return this._generateToken(user.users);
+    // Create wallet
+    const wallet = Wallet.createRandom();
+    const privateKey = wallet.privateKey;
+    const publicAddress = wallet.address;
+    const userId = uuidv4();
+    const vaultKeyName = `wallet-key-${userId}`;
+
+    // Initialize Azure Key Vault client
+    const credential = new ClientSecretCredential(
+      process.env.AZURE_TENANT_ID,
+      process.env.AZURE_CLIENT_ID,
+      process.env.AZURE_CLIENT_SECRET,
+    );
+    const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
+    const vaultClient = new SecretClient(vaultUrl, credential);
+
+    try {
+      // Save private key in Azure Key Vault
+      await vaultClient.setSecret(vaultKeyName, privateKey);
+
+      // Create user + wallet in a single transaction
+      const [newUser] = await this.prisma.$transaction([
+        this.prisma.users.create({
+          data: {
+            id: userId,
+            email: emails[0].value,
+            name: displayName,
+            avatar_url: photos?.[0]?.value,
+            auth_providers: {
+              create: {
+                provider: 'google',
+                provider_user_id: id,
+              },
+            },
+          },
+        }),
+        this.prisma.wallets.create({
+          data: {
+            public_address: publicAddress,
+            vault_key_name: vaultKeyName,
+            user_id: userId,
+          },
+        }),
+      ]);
+
+      return this._generateToken(newUser);
+    } catch (err) {
+      // Rollback: delete the key vault secret if DB failed
+      try {
+        await vaultClient.beginDeleteSecret(vaultKeyName);
+      } catch (e) {
+        console.error('Vault cleanup failed:', e.message);
+      }
+
+      throw new InternalServerErrorException('Google login failed');
+    }
   }
 
   private _generateToken(user: any) {
