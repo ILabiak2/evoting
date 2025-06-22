@@ -29,11 +29,23 @@ export class AuthService {
         name: true,
         role: true,
         avatar_url: true,
+        wallets: {
+          select: {
+            public_address: true,
+          },
+        },
       },
     });
 
     if (!userData) throw new UnauthorizedException('No user');
-    return userData;
+    return {
+      id: userData.id,
+      email: userData.email,
+      name: userData.name,
+      role: userData.role,
+      avatar_url: userData.avatar_url,
+      public_address: userData.wallets[0]?.public_address ?? null,
+    };
   }
 
   async register(createUserDto: CreateUserDto) {
@@ -86,7 +98,7 @@ export class AuthService {
           data: {
             public_address: publicAddress,
             vault_key_name: vaultKeyName,
-            user_id: userId
+            user_id: userId,
           },
         }),
       ]);
