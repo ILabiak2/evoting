@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/app/context/AuthContext';
 
-export default function AppSidebar() {
+export default function AppSidebar({ children }) {
     const { user } = useAuth();
     const links = [
         {
@@ -50,7 +50,6 @@ export default function AppSidebar() {
         <div
             className={cn(
                 "mx-auto flex w-full max-w flex-1 flex-col overflow-hidden border border-sidebar-border bg-sidebar-primary md:flex-row dark:border-neutral-700",
-                // for your use case, use `h-screen` instead of `h-[60vh]`
                 "h-screen"
             )}>
             <Sidebar open={open} setOpen={setOpen}>
@@ -74,19 +73,13 @@ export default function AppSidebar() {
                                 label: `${user?.name}`,
                                 href: "/profile",
                                 icon: (
-                                    //   <img
-                                    //     src="https://assets.aceternity.com/manu.png"
-                                    //     className="h-7 w-7 shrink-0 rounded-full"
-                                    //     width={50}
-                                    //     height={50}
-                                    //     alt="Avatar" />
                                     <User size={32} className="shrink-0 text-black dark:text-white" />
                                 ),
                             }} />
                     </div>
                 </SidebarBody>
             </Sidebar>
-            <Dashboard />
+            {children}
         </div>
     );
 }
