@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-contract VotingSystem {
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+
+contract VotingSystem is EIP712 {
     address public admin;
     uint256 public electionCounter;
     uint256 public constant MAX_CANDIDATES = 100;
 
-    constructor() {
+    constructor() EIP712("VotingSystem", "1") {
         admin = msg.sender;
     }
 
@@ -63,6 +66,15 @@ contract VotingSystem {
         uint256 voterLimit;
         CandidateView[] candidates;
     }
+
+    struct Vote {
+        uint256 electionId;
+        uint256 candidateId;
+        address voter;
+    }
+
+    bytes32 private constant VOTE_TYPEHASH =
+        keccak256("Vote(uint256 electionId,uint256 candidateId,address voter)");
 
     mapping(uint256 => Election) public elections;
     mapping(uint256 => address[]) internal electionVoters;
@@ -180,16 +192,25 @@ contract VotingSystem {
         address _voter,
         bytes memory signature
     ) external validElection(_electionId) {
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(_electionId, _candidateId, _voter)
+        Vote memory vote = Vote({
+            electionId: _electionId,
+            candidateId: _candidateId,
+            voter: _voter
+        });
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                VOTE_TYPEHASH,
+                vote.electionId,
+                vote.candidateId,
+                vote.voter
+            )
         );
-        bytes32 ethSignedMessageHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
-        );
-        require(
-            recoverSigner(ethSignedMessageHash, signature) == _voter,
-            "Invalid signature"
-        );
+
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        address signer = ECDSA.recover(digest, signature);
+        require(signer == _voter, "Invalid signature");
 
         _internalVote(_electionId, _candidateId, _voter);
     }

@@ -66,7 +66,7 @@ describe("VotingSystem", function () {
 
       ids.unshift(123123);
       elections = await voting.getElectionsByIds(ids);
-      console.log(elections);
+      // console.log(elections);
 
       expect(elections.length).to.equal(4);
       expect(elections[0].name).to.equal(`Election 0`);
@@ -110,12 +110,12 @@ describe("VotingSystem", function () {
       );
     });
 
-    it("не дозволяє додати кандидатів з однаковим ім’ям у те саме голосування", async () => {
+    it("не дозволяє додати кандидатів з однаковим ім'ям у те саме голосування", async () => {
       await voting.createElection("Вибори", true, 0);
 
       await voting.addCandidate(0, "Іван Іванович");
 
-      // Спроба додати кандидата з тим самим ім’ям має завершитися з помилкою
+      // Спроба додати кандидата з тим самим ім'ям має завершитися з помилкою
       await expect(voting.addCandidate(0, "Іван Іванович")).to.be.revertedWith(
         "Candidate name already exists"
       );
@@ -236,28 +236,49 @@ describe("VotingSystem", function () {
 
   describe("voteWithSignature", function () {
     let electionId;
+    let chainId, domain;
+    const domainName = "VotingSystem";
+    const domainVersion = "1";
+
+    const types = {
+      Vote: [
+        { name: "electionId", type: "uint256" },
+        { name: "candidateId", type: "uint256" },
+        { name: "voter", type: "address" },
+      ],
+    };
 
     beforeEach(async () => {
       await voting.createElection("Підписне голосування", true, 0);
       await voting.addCandidate(0, "Кандидат 1");
       electionId = 0;
+      const { chainId: chain } = await ethers.provider.getNetwork();
+      chainId = chain;
+
+      domain = {
+        name: domainName,
+        version: domainVersion,
+        chainId,
+        verifyingContract: voting.target,
+      };
     });
 
     it("Успішно голосує через підпис", async function () {
       const candidateId = 0;
       const voterAddress = user1.address;
 
-      const packedData = ethers.solidityPackedKeccak256(
-        ["uint256", "uint256", "address"],
-        [electionId, candidateId, voterAddress]
-      );
+      const value = {
+        electionId,
+        candidateId,
+        voter: voterAddress,
+      };
 
-      const signature = await user1.signMessage(ethers.getBytes(packedData));
+      const signature = await user1.signTypedData(domain, types, value);
 
       // Голосує через підпис
       await voting
         .connect(user2)
-        .voteWithSignature(electionId, candidateId, user1.address, signature);
+        .voteWithSignature(electionId, candidateId, voterAddress, signature);
 
       const elections = await voting.getAllElections();
       expect(elections[electionId].candidates[candidateId].voteCount).to.equal(
@@ -269,22 +290,23 @@ describe("VotingSystem", function () {
       const candidateId = 0;
       const voterAddress = user1.address;
 
-      const packedData = ethers.solidityPackedKeccak256(
-        ["uint256", "uint256", "address"],
-        [electionId, candidateId, voterAddress]
-      );
+      const value = {
+        electionId,
+        candidateId,
+        voter: voterAddress,
+      };
 
-      const signature = await user1.signMessage(ethers.getBytes(packedData));
+      const signature = await user1.signTypedData(domain, types, value);
 
       await voting
         .connect(owner)
-        .voteWithSignature(electionId, candidateId, user1.address, signature);
+        .voteWithSignature(electionId, candidateId, voterAddress, signature);
 
       // Повторне використання того ж підпису
       await expect(
         voting
           .connect(owner)
-          .voteWithSignature(electionId, candidateId, user1.address, signature)
+          .voteWithSignature(electionId, candidateId, voterAddress, signature)
       ).to.be.revertedWith("Already voted");
     });
 

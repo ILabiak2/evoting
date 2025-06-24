@@ -23,8 +23,8 @@ export default function Dashboard() {
                             Your address:&nbsp;
                         </p>
                         <p
-                            className="text-xl md:text-xl cursor-pointer hover:underline"
-                            title="Copy address"
+                            className="text-xl md:text-xl cursor-pointer"
+                            title="Click to copy address"
                             onClick={() => {
                                 if (user.public_address) {
                                     navigator.clipboard.writeText(user.public_address);
