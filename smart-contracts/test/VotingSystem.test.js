@@ -240,10 +240,17 @@ describe("VotingSystem", function () {
     const domainName = "VotingSystem";
     const domainVersion = "1";
 
-    const types = {
+    const voteTypes = {
       Vote: [
         { name: "electionId", type: "uint256" },
         { name: "candidateId", type: "uint256" },
+        { name: "voter", type: "address" },
+      ],
+    };
+
+    const authTypes = {
+      Auth: [
+        { name: "electionId", type: "uint256" },
         { name: "voter", type: "address" },
       ],
     };
@@ -273,12 +280,28 @@ describe("VotingSystem", function () {
         voter: voterAddress,
       };
 
-      const signature = await user1.signTypedData(domain, types, value);
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
 
       // Голосує через підпис
       await voting
         .connect(user2)
-        .voteWithSignature(electionId, candidateId, voterAddress, signature);
+        .voteWithSignature(
+          electionId,
+          candidateId,
+          voterAddress,
+          voteSignature,
+          authSignature
+        );
 
       const elections = await voting.getAllElections();
       expect(elections[electionId].candidates[candidateId].voteCount).to.equal(
@@ -296,21 +319,43 @@ describe("VotingSystem", function () {
         voter: voterAddress,
       };
 
-      const signature = await user1.signTypedData(domain, types, value);
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
 
       await voting
         .connect(owner)
-        .voteWithSignature(electionId, candidateId, voterAddress, signature);
+        .voteWithSignature(
+          electionId,
+          candidateId,
+          voterAddress,
+          voteSignature,
+          authSignature
+        );
 
       // Повторне використання того ж підпису
       await expect(
         voting
           .connect(owner)
-          .voteWithSignature(electionId, candidateId, voterAddress, signature)
+          .voteWithSignature(
+            electionId,
+            candidateId,
+            voterAddress,
+            voteSignature,
+            authSignature
+          )
       ).to.be.revertedWith("Already voted");
     });
 
-    it("Викидає помилку при фальшивому підписі", async function () {
+    it("Викидає помилку при фальшивому підписі виборця", async function () {
       const candidateId = 0;
       const voterAddress = user1.address;
 
@@ -320,8 +365,19 @@ describe("VotingSystem", function () {
       );
 
       // user2 підписує повідомлення, але передаємо ніби це user1
-      const fakeSignature = await user2.signMessage(
+      const fakeVoteSignature = await user2.signMessage(
         ethers.getBytes(packedData)
+      );
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
       );
 
       await expect(
@@ -331,9 +387,46 @@ describe("VotingSystem", function () {
             electionId,
             candidateId,
             user1.address,
-            fakeSignature
+            fakeVoteSignature,
+            authSignature
           )
       ).to.be.revertedWith("Invalid signature");
+    });
+
+    it("Викидає помилку при фальшивому підписі власника контракту", async function () {
+      const candidateId = 0;
+      const voterAddress = user1.address;
+
+      const value = {
+        electionId,
+        candidateId,
+        voter: voterAddress,
+      };
+
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+
+      const fakeAuthSignature = await user2.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      await expect(
+        voting
+          .connect(owner)
+          .voteWithSignature(
+            electionId,
+            candidateId,
+            user1.address,
+            voteSignature,
+            fakeAuthSignature
+          )
+      ).to.be.revertedWith("Not authorized by owner");
     });
   });
 });

@@ -75,6 +75,8 @@ contract VotingSystem is EIP712 {
 
     bytes32 private constant VOTE_TYPEHASH =
         keccak256("Vote(uint256 electionId,uint256 candidateId,address voter)");
+    bytes32 constant AUTH_TYPEHASH =
+        keccak256("Auth(uint256 electionId,address voter)");
 
     mapping(uint256 => Election) public elections;
     mapping(uint256 => address[]) internal electionVoters;
@@ -190,9 +192,10 @@ contract VotingSystem is EIP712 {
         uint256 _electionId,
         uint256 _candidateId,
         address _voter,
-        bytes memory signature
+        bytes memory voterSignature,
+        bytes memory authSignature
     ) external validElection(_electionId) {
-        Vote memory vote = Vote({
+        Vote memory voteData = Vote({
             electionId: _electionId,
             candidateId: _candidateId,
             voter: _voter
@@ -201,16 +204,27 @@ contract VotingSystem is EIP712 {
         bytes32 structHash = keccak256(
             abi.encode(
                 VOTE_TYPEHASH,
-                vote.electionId,
-                vote.candidateId,
-                vote.voter
+                voteData.electionId,
+                voteData.candidateId,
+                voteData.voter
             )
         );
 
         bytes32 digest = _hashTypedDataV4(structHash);
 
-        address signer = ECDSA.recover(digest, signature);
+        address signer = ECDSA.recover(digest, voterSignature);
         require(signer == _voter, "Invalid signature");
+
+        bytes32 authHash = keccak256(
+            abi.encode(AUTH_TYPEHASH, _electionId, _voter)
+        );
+
+        bytes32 authDigest = _hashTypedDataV4(authHash);
+        address authSigner = ECDSA.recover(authDigest, authSignature);
+        require(
+            authSigner == elections[_electionId].creator,
+            "Not authorized by owner"
+        );
 
         _internalVote(_electionId, _candidateId, _voter);
     }
