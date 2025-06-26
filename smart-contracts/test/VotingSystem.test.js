@@ -74,6 +74,110 @@ describe("VotingSystem", function () {
       expect(elections[2].name).to.equal(`Election 5`);
       expect(elections[3].name).to.equal(`Election 9`);
     });
+
+    it("Створює голосування з підписом творця голосування", async function () {
+      const electionsBefore = await voting.getAllElections();
+      expect(electionsBefore.length).to.equal(0);
+      const { chainId: chain } = await ethers.provider.getNetwork();
+      let chainId = chain;
+
+      const domain = {
+        name: "VotingSystem",
+        version: "1",
+        chainId,
+        verifyingContract: voting.target,
+      };
+
+      const types = {
+        Election: [
+          { name: "name", type: "string" },
+          { name: "startImmediately", type: "bool" },
+          { name: "voterLimit", type: "uint256" },
+          { name: "creator", type: "address" },
+        ],
+      };
+
+      const value = {
+        name: "Election via signature",
+        startImmediately: true,
+        voterLimit: 100,
+        creator: user1.address,
+      };
+
+      const signature = await user1.signTypedData(domain, types, value);
+
+      await voting
+        .connect(user2)
+        .createElectionWithSignature(
+          value.name,
+          value.startImmediately,
+          value.voterLimit,
+          value.creator,
+          signature
+        );
+
+      const elections = await voting.getAllElections();
+
+      expect(elections.length).to.equal(1);
+      expect(elections[0].name).to.equal("Election via signature");
+      expect(elections[0].isActive).to.equal(true);
+      expect(elections[0].startedManually).to.equal(true);
+
+      const activeElections = await voting.getActiveElections();
+
+      expect(activeElections.length).to.equal(1);
+      expect(activeElections[0].name).to.equal("Election via signature");
+      expect(activeElections[0].id).to.equal(0);
+      expect(activeElections[0].candidateCount).to.equal(0);
+    });
+
+    it("Створює голосування з неправильним підписом творця голосування", async function () {
+      const electionsBefore = await voting.getAllElections();
+      expect(electionsBefore.length).to.equal(0);
+      const { chainId: chain } = await ethers.provider.getNetwork();
+      let chainId = chain;
+
+      const domain = {
+        name: "VotingSystem",
+        version: "1",
+        chainId,
+        verifyingContract: voting.target,
+      };
+
+      const types = {
+        Election: [
+          { name: "name", type: "string" },
+          { name: "startImmediately", type: "bool" },
+          { name: "voterLimit", type: "uint256" },
+          { name: "creator", type: "address" },
+        ],
+      };
+
+      const value = {
+        name: "Election via signature",
+        startImmediately: true,
+        voterLimit: 100,
+        creator: user2.address,
+      };
+
+      const signature = await user1.signTypedData(domain, types, value);
+
+      await expect(
+        voting
+          .connect(user2)
+          .createElectionWithSignature(
+            value.name,
+            value.startImmediately,
+            value.voterLimit,
+            value.creator,
+            signature
+          )
+      ).to.be.revertedWith("Invalid signature");
+
+      const elections = await voting.getAllElections();
+
+      expect(elections.length).to.equal(0);
+    });
   });
 
   describe("addCandidate", function () {

@@ -77,6 +77,10 @@ contract VotingSystem is EIP712 {
         keccak256("Vote(uint256 electionId,uint256 candidateId,address voter)");
     bytes32 constant AUTH_TYPEHASH =
         keccak256("Auth(uint256 electionId,address voter)");
+    bytes32 public constant ELECTION_TYPEHASH =
+        keccak256(
+            "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
+        );
 
     mapping(uint256 => Election) public elections;
     mapping(uint256 => address[]) internal electionVoters;
@@ -120,6 +124,49 @@ contract VotingSystem is EIP712 {
         Election storage e = elections[electionCounter];
         e.id = electionCounter;
         e.creator = msg.sender;
+        e.name = _name;
+        e.voterLimit = _voterLimit;
+
+        if (_startImmediately) {
+            e.startTime = block.timestamp;
+            e.isActive = true;
+            e.startedManually = true;
+        } else {
+            e.startTime = 0;
+            e.isActive = false;
+        }
+
+        e.endTime = 0; // Not set at creation
+
+        emit ElectionCreated(electionCounter, _name);
+        electionCounter++;
+    }
+
+    function createElectionWithSignature(
+        string memory _name,
+        bool _startImmediately,
+        uint256 _voterLimit,
+        address _creator,
+        bytes memory signature
+    ) external {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ELECTION_TYPEHASH,
+                keccak256(bytes(_name)),
+                _startImmediately,
+                _voterLimit,
+                _creator
+            )
+        );
+
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
+
+        require(signer == _creator, "Invalid signature");
+
+        Election storage e = elections[electionCounter];
+        e.id = electionCounter;
+        e.creator = _creator;
         e.name = _name;
         e.voterLimit = _voterLimit;
 
