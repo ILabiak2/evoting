@@ -37,13 +37,14 @@ export default function Dashboard() {
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    {/* {[...new Array(2)].map((i, idx) => (
-                        <div
-                            key={"second-array-demo-1" + idx}
-                            className="h-full w-full rounded-lg bg-gray-100 dark:bg-neutral-800"></div>
-                    ))} */}
+                <div className="flex gap-2 max-h-[calc(100vh-10rem)] overflow-y-auto">
                     <ul className="w-full grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        <ElectionInfo title={'Election 1'} isActive={true} votes={10} />
+                        <ElectionInfo title={'Election 2'} votes={1} />
+                        <ElectionInfo title={'Election 1'} isActive={true} votes={10} />
+                        <ElectionInfo title={'Election 2'} votes={1} />
+                        <ElectionInfo title={'Election 1'} isActive={true} votes={10} />
+                        <ElectionInfo title={'Election 2'} votes={1} />
                         <ElectionInfo title={'Election 1'} isActive={true} votes={10} />
                         <ElectionInfo title={'Election 2'} votes={1} />
                     </ul>
