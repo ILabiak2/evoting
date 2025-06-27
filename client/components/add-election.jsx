@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 import { Trash2 } from 'lucide-react';
 
 
-
-
 export default function AddElection() {
     const [errors, setErrors] = useState([]);
     const [generalError, setGeneralError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [startImmediately, setStartImmediately] = useState(true);
+    const [candidateName, setCandidateName] = useState('')
     const [candidates, setCandidates] = useState([
         { id: 1, name: 'Alice Johnson' },
         { id: 2, name: 'Bob Smith' },
@@ -26,8 +26,19 @@ export default function AddElection() {
         // { id: 10, name: 'Bob Smith' },
     ]);
 
+    const handleAddCandidate = () => {
+        if (candidateName.length < 3) {
+            return;
+        }
+        setCandidates([...candidates, {
+            id: Date.now(),
+            name: candidateName,
+        }])
+    }
+
     return (
         <div className="grid grid-cols-1 md:gap-4 md:grid-cols-2 overflow-y-auto h-full w-full p-2 md:p-10 bg-white dark:bg-neutral-950">
+
             <div
                 className="w-full order-1 md:order-1 md:shadow-input md:dark:shadow-neutral-900 border-0 z-20 md:mt-5 md:mx-5 md:max-w-md rounded-2xl p-4 md:p-8">
                 <h2 className="text-3xl font-bold text-neutral-800 dark:text-neutral-200">
@@ -64,6 +75,8 @@ export default function AddElection() {
                             name="startImmediately"
                             type="checkbox"
                             className="h-5 w-5 cursor-pointer rounded"
+                            checked={startImmediately}
+                            onClick={() => { setStartImmediately(!startImmediately) }}
                         />
                         <label htmlFor="startImmediately" className="text-sm text-neutral-700 dark:text-white">
                             Start immediately
@@ -72,7 +85,6 @@ export default function AddElection() {
                 </form>
             </div>
 
-
             <div
                 className="w-full md:shadow-input md:dark:shadow-neutral-900 order-3 md:order-2 h-full border-0 z-20 md:mt-5 md:mx-5 md:max-w-md rounded-2xl p-4  md:p-8 ">
                 <form className=" flex h-full flex-col justify-between" onSubmit={() => { console.log('123') }}>
@@ -80,10 +92,6 @@ export default function AddElection() {
                         <h2 className="text-3xl font-bold text-neutral-800 dark:text-neutral-200">
                             Candidates
                         </h2>
-                        {/* <LabelInputContainer className="mb-4 md:mb-10">
-                                <Label htmlFor="name">Election name</Label>
-                                <Input id="name" name="name" placeholder="Parlament Election" type="text" />
-                            </LabelInputContainer> */}
                         <div className="space-y-3 mt-2 max-h-72 overflow-y-auto pr-1">
                             {candidates.map((candidate) => (
                                 <div
@@ -134,14 +142,14 @@ export default function AddElection() {
                 <div>
                     <LabelInputContainer className="mb-4">
                         <Label htmlFor="candidate-name">Candidate name</Label>
-                        <Input id="candidate-name" name="candidate-name" placeholder="Joe Biden" type="text" />
+                        <Input id="candidate-name" name="candidate-name" placeholder="Joe Biden" type="text" value={candidateName} onChange={(e) => setCandidateName(e.target.value)} />
                     </LabelInputContainer>
                     <div className="">
                         <button
                             className={cn("group/btn relative block h-10 w-full cursor-pointer rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset]",
                                 loading && "opacity-50 cursor-not-allowed"
                             )}
-                            onClick={() => { console.log(1) }}>
+                            onClick={handleAddCandidate}>
                             Add candidate &rarr;
                             <BottomGradient />
                         </button>
@@ -151,8 +159,6 @@ export default function AddElection() {
                     </div>
                 </div>
             </div>
-
-
 
         </div >
     );
