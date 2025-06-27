@@ -7,14 +7,11 @@ import {
   IconBrandGoogle,
   IconEye, IconEyeOff
 } from "@tabler/icons-react";
-import { useId } from "react";
 import { useRouter } from 'next/navigation'
 import { LabelInputContainer, BottomGradient } from '@/components/signup-form'
 
 
 export default function Login() {
-  const id = useId();
-  const [role, setRole] = useState('user');
   const [errors, setErrors] = useState([]);
   const [generalError, setGeneralError] = useState('');
   const [showPassword, setShowPassword] = useState(false);

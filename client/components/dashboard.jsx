@@ -19,22 +19,30 @@ export default function Dashboard() {
                     </div>
                     <div
                         className="h-15 md:h-20 flex justify-end items-center w-full rounded-lg">
-                        <p className="hidden md:inline text-bg md:text-xl">
-                            Your address:&nbsp;
-                        </p>
-                        <p
-                            className="text-xl md:text-xl cursor-pointer"
-                            title="Click to copy address"
-                            onClick={() => {
-                                if (user.public_address) {
-                                    navigator.clipboard.writeText(user.public_address);
-                                }
-                            }}
-                        >
-                            {user.public_address
-                                ? `${user.public_address.slice(0, 4)}...${user.public_address.slice(-4)}`
-                                : ""}
-                        </p>
+                        {user?.role == 'ujser' && (
+                            <>
+                                <p className="hidden md:inline text-bg md:text-xl">
+                                    Your address:&nbsp;
+                                </p>
+                                <p
+                                    className="text-xl md:text-xl cursor-pointer"
+                                    title="Click to copy address"
+                                    onClick={() => {
+                                        if (user.public_address) {
+                                            navigator.clipboard.writeText(user.public_address);
+                                        }
+                                    }}
+                                >
+                                    {user.public_address
+                                        ? `${user.public_address.slice(0, 4)}...${user.public_address.slice(-4)}`
+                                        : ""}
+                                </p></>
+                        )}
+                        <button onClick={() => { window.location.href = '/election-create' }}
+                            className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900">
+                            Create election
+                        </button>
+                        {/* <AddElection /> */}
                     </div>
                 </div>
                 <div className="flex gap-2 max-h-[calc(100vh-10rem)] overflow-y-auto">
