@@ -226,6 +226,75 @@ describe("VotingSystem", function () {
     });
   });
 
+  const { expect } = require("chai");
+  const { ethers } = require("hardhat");
+
+  describe("addCandidates", function () {
+    let Voting, voting;
+    let owner, user1;
+    const electionName = "Test Election";
+    const candidateNames = ["Alice", "Bob", "Charlie"];
+
+    beforeEach(async function () {
+      [owner, user1] = await ethers.getSigners();
+      Voting = await ethers.getContractFactory("VotingSystem");
+      voting = await Voting.deploy();
+      await voting.createElection(electionName, true, 0); // electionId = 0
+    });
+
+    async function getElectionWithCandidates(id) {
+      const elections = await voting.getElectionsByIds([id]);
+      return elections[0];
+    }
+
+    it("Успішне додавання декількох кандидатів", async function () {
+      await voting.addCandidates(0, candidateNames);
+
+      const election = await getElectionWithCandidates(0);
+      expect(election.candidateCount).to.equal(candidateNames.length);
+
+      for (let i = 0; i < candidateNames.length; i++) {
+        expect(election.candidates[i].name).to.equal(candidateNames[i]);
+      }
+    });
+
+    it("Помилка, якщо кількість кандидатів більша за максимум", async function () {
+      const MAX = 100;
+      const tooMany = Array(MAX + 1).fill("Name");
+
+      await expect(voting.addCandidates(0, tooMany)).to.be.revertedWith(
+        "Exceeds max candidates"
+      );
+    });
+
+    it("Помилка при додаванні кандидатів з однаковим іменем", async function () {
+      const withDuplicates = ["Alice", "Bob", "Alice"];
+
+      await expect(voting.addCandidates(0, withDuplicates)).to.be.revertedWith(
+        "Duplicate candidate name"
+      );
+    });
+
+    it("Помилка, якщо користувач, який додає кандидатів, не є адміном або творцем", async function () {
+      await expect(
+        voting.connect(user1).addCandidates(0, candidateNames)
+      ).to.be.revertedWith("Not creator or admin");
+    });
+
+    it("Додавання кандидатів кількома викликами функції", async function () {
+      await voting.addCandidates(0, ["Alice", "Bob"]);
+      await voting.addCandidates(0, ["Charlie", "Dave"]);
+
+      const election = await getElectionWithCandidates(0);
+      expect(election.candidateCount).to.equal(4);
+
+      const expectedNames = ["Alice", "Bob", "Charlie", "Dave"];
+      for (let i = 0; i < 4; i++) {
+        expect(election.candidates[i].name).to.equal(expectedNames[i]);
+      }
+    });
+  });
+
   describe("startElection / endElection", function () {
     it("Запускає і завершує голосування", async function () {
       await voting.createElection("Тест", false, 0);

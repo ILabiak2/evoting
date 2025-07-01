@@ -203,6 +203,35 @@ contract VotingSystem is EIP712 {
         e.candidateCount++;
     }
 
+    function addCandidates(
+        uint256 _electionId,
+        string[] memory _names
+    ) external onlyCreatorOrAdmin(_electionId) validElection(_electionId) {
+        Election storage e = elections[_electionId];
+        uint256 namesLength = _names.length;
+
+        require(
+            e.candidateCount + namesLength <= MAX_CANDIDATES,
+            "Exceeds max candidates"
+        );
+
+        for (uint256 i = 0; i < namesLength; i++) {
+            bytes32 nameHash = keccak256(abi.encodePacked(_names[i]));
+            require(
+                !e.candidateNameExists[nameHash],
+                "Duplicate candidate name"
+            );
+
+            e.candidates[e.candidateCount] = Candidate(
+                e.candidateCount,
+                _names[i],
+                0
+            );
+            e.candidateNameExists[nameHash] = true;
+            e.candidateCount++;
+        }
+    }
+
     function startElection(
         uint256 _electionId
     ) external validElection(_electionId) onlyCreatorOrAdmin(_electionId) {
