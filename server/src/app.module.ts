@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { ElectionModule } from './election/election.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ConfigModule } from '@nestjs/config';
       isGlobal: true, // Makes config available everywhere
       envFilePath: '.env', // Path to your .env file
     }),
+    ElectionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

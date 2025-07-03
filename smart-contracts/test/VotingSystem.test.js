@@ -16,7 +16,7 @@ describe("VotingSystem", function () {
       const electionsBefore = await voting.getAllElections();
       expect(electionsBefore.length).to.equal(0);
 
-      await voting.createElection("Голосування 1", true, 0);
+      await voting.createElection("Голосування 1", true, 0, ["Кандидат 1"]);
       const elections = await voting.getAllElections();
 
       expect(elections.length).to.equal(1);
@@ -29,11 +29,12 @@ describe("VotingSystem", function () {
       expect(activeElections.length).to.equal(1);
       expect(activeElections[0].name).to.equal("Голосування 1");
       expect(activeElections[0].id).to.equal(0);
-      expect(activeElections[0].candidateCount).to.equal(0);
+      expect(activeElections[0].candidateCount).to.equal(1);
+      expect(activeElections[0].candidates[0].name).to.equal("Кандидат 1");
     });
 
     it("Створює голосування без старту", async function () {
-      await voting.createElection("Голосування 2", false, 100);
+      await voting.createElection("Голосування 2", false, 100, ["Кандидат 1"]);
       const elections = await voting.getAllElections();
       expect(elections.length).to.equal(1);
       expect(elections[0].isActive).to.equal(false);
@@ -51,7 +52,7 @@ describe("VotingSystem", function () {
       expect(elections.length).to.equal(0);
 
       for (let i = 0; i < 10; i++) {
-        await voting.createElection(`Election ${i}`, false, 0);
+        await voting.createElection(`Election ${i}`, false, 0, ["Кандидат 1"]);
       }
 
       elections = await voting.getElectionsByIds(ids);
@@ -61,7 +62,7 @@ describe("VotingSystem", function () {
         const election = elections[i];
         expect(election.id).to.equal(ids[i]);
         expect(election.name).to.equal(`Election ${ids[i]}`);
-        expect(election.candidateCount).to.equal(0);
+        expect(election.candidateCount).to.equal(1);
       }
 
       ids.unshift(123123);
@@ -113,6 +114,7 @@ describe("VotingSystem", function () {
           value.startImmediately,
           value.voterLimit,
           value.creator,
+          ["Кандидат 1"],
           signature
         );
 
@@ -128,7 +130,7 @@ describe("VotingSystem", function () {
       expect(activeElections.length).to.equal(1);
       expect(activeElections[0].name).to.equal("Election via signature");
       expect(activeElections[0].id).to.equal(0);
-      expect(activeElections[0].candidateCount).to.equal(0);
+      expect(activeElections[0].candidateCount).to.equal(1);
     });
 
     it("Створює голосування з неправильним підписом творця голосування", async function () {
@@ -170,6 +172,7 @@ describe("VotingSystem", function () {
             value.startImmediately,
             value.voterLimit,
             value.creator,
+            ["Кандидат 1"],
             signature
           )
       ).to.be.revertedWith("Invalid signature");
@@ -182,9 +185,8 @@ describe("VotingSystem", function () {
 
   describe("addCandidate", function () {
     it("Додає кандидатів до виборів", async function () {
-      await voting.createElection("Голосування 1", true, 0);
-      await voting.addCandidate(0, "Кандидат 1");
-      await voting.addCandidate(0, "Кандидат 2");
+      await voting.createElection("Голосування 1", true, 0, ["Кандидат 1"]);
+      await voting.addCandidates(0, ["Кандидат 2"]);
 
       const all = await voting.getAllElections();
       expect(all[0].candidateCount).to.equal(2);
@@ -203,31 +205,26 @@ describe("VotingSystem", function () {
     });
 
     it("Забороняє додавати більше ніж MAX_CANDIDATES", async function () {
-      await voting.createElection("Test", true, 0);
+      await voting.createElection("Test", true, 0, ["Кандидат 1"]);
 
-      for (let i = 0; i < 100; i++) {
-        await voting.addCandidate(0, `Канд. ${i}`);
+      for (let i = 0; i < 99; i++) {
+        await voting.addCandidates(0, [`Канд. ${i}`]);
       }
 
-      await expect(voting.addCandidate(0, "Перевищення")).to.be.revertedWith(
-        "Max candidates"
+      await expect(voting.addCandidates(0, ["Перевищення"])).to.be.revertedWith(
+        "Exceeds max candidates"
       );
     });
 
     it("не дозволяє додати кандидатів з однаковим ім'ям у те саме голосування", async () => {
-      await voting.createElection("Вибори", true, 0);
-
-      await voting.addCandidate(0, "Іван Іванович");
+      await voting.createElection("Вибори", true, 0, ["Іван Іванович"]);
 
       // Спроба додати кандидата з тим самим ім'ям має завершитися з помилкою
-      await expect(voting.addCandidate(0, "Іван Іванович")).to.be.revertedWith(
-        "Candidate name already exists"
-      );
+      await expect(
+        voting.addCandidates(0, ["Іван Іванович"])
+      ).to.be.revertedWith("Duplicate candidate name");
     });
   });
-
-  const { expect } = require("chai");
-  const { ethers } = require("hardhat");
 
   describe("addCandidates", function () {
     let Voting, voting;
@@ -239,7 +236,7 @@ describe("VotingSystem", function () {
       [owner, user1] = await ethers.getSigners();
       Voting = await ethers.getContractFactory("VotingSystem");
       voting = await Voting.deploy();
-      await voting.createElection(electionName, true, 0); // electionId = 0
+      await voting.createElection(electionName, true, 0, ["First"]); // electionId = 0
     });
 
     async function getElectionWithCandidates(id) {
@@ -251,10 +248,10 @@ describe("VotingSystem", function () {
       await voting.addCandidates(0, candidateNames);
 
       const election = await getElectionWithCandidates(0);
-      expect(election.candidateCount).to.equal(candidateNames.length);
+      expect(election.candidateCount).to.equal(candidateNames.length + 1);
 
       for (let i = 0; i < candidateNames.length; i++) {
-        expect(election.candidates[i].name).to.equal(candidateNames[i]);
+        expect(election.candidates[i + 1].name).to.equal(candidateNames[i]);
       }
     });
 
@@ -286,18 +283,18 @@ describe("VotingSystem", function () {
       await voting.addCandidates(0, ["Charlie", "Dave"]);
 
       const election = await getElectionWithCandidates(0);
-      expect(election.candidateCount).to.equal(4);
+      expect(election.candidateCount).to.equal(5);
 
       const expectedNames = ["Alice", "Bob", "Charlie", "Dave"];
       for (let i = 0; i < 4; i++) {
-        expect(election.candidates[i].name).to.equal(expectedNames[i]);
+        expect(election.candidates[i + 1].name).to.equal(expectedNames[i]);
       }
     });
   });
 
   describe("startElection / endElection", function () {
     it("Запускає і завершує голосування", async function () {
-      await voting.createElection("Тест", false, 0);
+      await voting.createElection("Тест", false, 0, ["Кандидат 1"]);
       await voting.startElection(0);
       let all = await voting.getAllElections();
       // console.log('Election name:', all[0].name)
@@ -313,8 +310,9 @@ describe("VotingSystem", function () {
   describe("stop/start election", function () {
     it("не дозволяє повторно запустити вибори після завершення", async function () {
       // Створення і запуск виборів
-      await voting.createElection("Одноразові вибори", false, 0);
-      await voting.addCandidate(0, "Кандидат X");
+      await voting.createElection("Одноразові вибори", false, 0, [
+        "Кандидат X",
+      ]);
 
       // Запуск
       await voting.startElection(0);
@@ -331,8 +329,7 @@ describe("VotingSystem", function () {
 
   describe("vote", function () {
     beforeEach(async () => {
-      await voting.createElection("Vote Test", true, 0);
-      await voting.addCandidate(0, "Кандидат");
+      await voting.createElection("Vote Test", true, 0, ["Кандидат"]);
     });
 
     it("Дозволяє голосування одному користувачу", async function () {
@@ -349,16 +346,14 @@ describe("VotingSystem", function () {
     });
 
     it("Не дозволяє голосувати неактивні вибори", async function () {
-      await voting.createElection("Інше", false, 0);
-      await voting.addCandidate(1, "Канд.");
+      await voting.createElection("Інше", false, 0, ["Канд."]);
       await expect(voting.connect(user1).vote(1, 0)).to.be.revertedWith(
         "Election not active"
       );
     });
 
     it("Завершує вибори, якщо досягнуто ліміту голосів", async function () {
-      await voting.createElection("Обмежене", true, 1);
-      await voting.addCandidate(1, "Канд");
+      await voting.createElection("Обмежене", true, 1, ["Канд"]);
 
       await voting.connect(user1).vote(1, 0);
       const all = await voting.getAllElections();
@@ -369,8 +364,7 @@ describe("VotingSystem", function () {
 
   describe("getMyVote", function () {
     it("Повертає правильний статус голосування", async function () {
-      await voting.createElection("Голосування", true, 0);
-      await voting.addCandidate(0, "Кандидат 1");
+      await voting.createElection("Голосування", true, 0, ["Кандидат 1"]);
 
       const voteBefore = await voting.connect(user1).getMyVote(0);
       expect(voteBefore.hasVoted).to.equal(false);
@@ -388,8 +382,7 @@ describe("VotingSystem", function () {
 
   describe("getResults", function () {
     it("Повертає результати після завершення виборів", async function () {
-      await voting.createElection("Results", true, 1);
-      await voting.addCandidate(0, "A");
+      await voting.createElection("Results", true, 1, ["A"]);
       await voting.connect(user1).vote(0, 0);
 
       const results = await voting.getResults(0);
@@ -398,8 +391,7 @@ describe("VotingSystem", function () {
     });
 
     it("Не повертає результати до завершення", async function () {
-      await voting.createElection("Not ended", true, 0);
-      await voting.addCandidate(0, "X");
+      await voting.createElection("Not ended", true, 0, ["X"]);
 
       await expect(voting.getResults(0)).to.be.revertedWith(
         "Election not ended"
@@ -429,8 +421,7 @@ describe("VotingSystem", function () {
     };
 
     beforeEach(async () => {
-      await voting.createElection("Підписне голосування", true, 0);
-      await voting.addCandidate(0, "Кандидат 1");
+      await voting.createElection("Підписне голосування", true, 0, ["Кандидат 1"]);
       electionId = 0;
       const { chainId: chain } = await ethers.provider.getNetwork();
       chainId = chain;

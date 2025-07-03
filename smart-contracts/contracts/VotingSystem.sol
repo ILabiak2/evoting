@@ -84,6 +84,7 @@ contract VotingSystem is EIP712 {
 
     mapping(uint256 => Election) public elections;
     mapping(uint256 => address[]) internal electionVoters;
+    mapping(uint256 => Candidate[]) public electionCandidates;
 
     // Events
     event ElectionCreated(uint256 indexed electionId, string name);
@@ -119,7 +120,8 @@ contract VotingSystem is EIP712 {
     function createElection(
         string memory _name,
         bool _startImmediately,
-        uint256 _voterLimit
+        uint256 _voterLimit,
+        string[] memory _candidateNames
     ) external {
         Election storage e = elections[electionCounter];
         e.id = electionCounter;
@@ -138,6 +140,8 @@ contract VotingSystem is EIP712 {
 
         e.endTime = 0; // Not set at creation
 
+        _addCandidates(e, _candidateNames);
+
         emit ElectionCreated(electionCounter, _name);
         electionCounter++;
     }
@@ -147,6 +151,7 @@ contract VotingSystem is EIP712 {
         bool _startImmediately,
         uint256 _voterLimit,
         address _creator,
+        string[] memory _candidateNames,
         bytes memory signature
     ) external {
         bytes32 structHash = keccak256(
@@ -181,26 +186,10 @@ contract VotingSystem is EIP712 {
 
         e.endTime = 0; // Not set at creation
 
+        _addCandidates(e, _candidateNames);
+
         emit ElectionCreated(electionCounter, _name);
         electionCounter++;
-    }
-
-    function addCandidate(
-        uint256 _electionId,
-        string memory _name
-    ) external onlyCreatorOrAdmin(_electionId) validElection(_electionId) {
-        Election storage e = elections[_electionId];
-        require(e.candidateCount < MAX_CANDIDATES, "Max candidates");
-
-        bytes32 nameHash = keccak256(abi.encodePacked(_name));
-        require(
-            !e.candidateNameExists[nameHash],
-            "Candidate name already exists"
-        );
-
-        e.candidates[e.candidateCount] = Candidate(e.candidateCount, _name, 0);
-        e.candidateNameExists[nameHash] = true;
-        e.candidateCount++;
     }
 
     function addCandidates(
@@ -208,6 +197,13 @@ contract VotingSystem is EIP712 {
         string[] memory _names
     ) external onlyCreatorOrAdmin(_electionId) validElection(_electionId) {
         Election storage e = elections[_electionId];
+        _addCandidates(e, _names);
+    }
+
+    function _addCandidates(
+        Election storage e,
+        string[] memory _names
+    ) internal {
         uint256 namesLength = _names.length;
 
         require(
@@ -231,6 +227,35 @@ contract VotingSystem is EIP712 {
             e.candidateCount++;
         }
     }
+
+    // function addCandidates(
+    //     uint256 _electionId,
+    //     string[] memory _names
+    // ) external onlyCreatorOrAdmin(_electionId) validElection(_electionId) {
+    //     Election storage e = elections[_electionId];
+    //     uint256 namesLength = _names.length;
+
+    //     require(
+    //         e.candidateCount + namesLength <= MAX_CANDIDATES,
+    //         "Exceeds max candidates"
+    //     );
+
+    //     for (uint256 i = 0; i < namesLength; i++) {
+    //         bytes32 nameHash = keccak256(abi.encodePacked(_names[i]));
+    //         require(
+    //             !e.candidateNameExists[nameHash],
+    //             "Duplicate candidate name"
+    //         );
+
+    //         e.candidates[e.candidateCount] = Candidate(
+    //             e.candidateCount,
+    //             _names[i],
+    //             0
+    //         );
+    //         e.candidateNameExists[nameHash] = true;
+    //         e.candidateCount++;
+    //     }
+    // }
 
     function startElection(
         uint256 _electionId
