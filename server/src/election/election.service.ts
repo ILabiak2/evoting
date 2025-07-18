@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UseGuards } from '@nestjs/common';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
 import { BlockchainService } from '../blockchain/blockchain.service';
@@ -7,7 +7,8 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 export class ElectionService {
   constructor(private readonly blockchain: BlockchainService) {}
 
-  create(createElectionDto: CreateElectionDto) {
+  create(createElectionDto: CreateElectionDto, userId: String) {
+
     return 'This action adds a new election';
   }
 

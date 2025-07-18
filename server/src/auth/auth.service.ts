@@ -9,8 +9,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, LoginUserDto } from './dto/user.dto';
 import { UUID } from 'crypto';
 import { Wallet } from 'ethers';
-import { SecretClient } from '@azure/keyvault-secrets';
-import { ClientSecretCredential } from '@azure/identity';
+// import { SecretClient } from '@azure/keyvault-secrets';
+// import { ClientSecretCredential } from '@azure/identity';
+import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private readonly azureKeyVaultService: AzureKeyVaultService,
   ) {}
 
   async getUserData(userId: UUID) {
@@ -65,17 +67,18 @@ export class AuthService {
     const vaultKeyName = `wallet-key-${userId}`;
 
     // Init Azure Key Vault client
-    const credential = new ClientSecretCredential(
-      process.env.AZURE_TENANT_ID,
-      process.env.AZURE_CLIENT_ID,
-      process.env.AZURE_CLIENT_SECRET,
-    );
-    const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
-    const vaultClient = new SecretClient(vaultUrl, credential);
+    // const credential = new ClientSecretCredential(
+    //   process.env.AZURE_TENANT_ID,
+    //   process.env.AZURE_CLIENT_ID,
+    //   process.env.AZURE_CLIENT_SECRET,
+    // );
+    // const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
+    // const vaultClient = new SecretClient(vaultUrl, credential);
 
     try {
       // Store private key in Key Vault FIRST — before DB write
-      await vaultClient.setSecret(vaultKeyName, privateKey);
+      // await vaultClient.setSecret(vaultKeyName, privateKey);
+      await this.azureKeyVaultService.setPrivateKey(vaultKeyName, privateKey);
 
       // Wrap all Prisma operations in a single transaction
       const [user] = await this.prisma.$transaction([
@@ -106,8 +109,10 @@ export class AuthService {
       return this._generateToken(user);
     } catch (err) {
       // Optional: delete secret from Key Vault if DB transaction failed
+      console.log(err)
       try {
-        await vaultClient.beginDeleteSecret(vaultKeyName);
+        // await vaultClient.beginDeleteSecret(vaultKeyName);
+        await this.azureKeyVaultService.deletePrivateKey(vaultKeyName);
       } catch (e) {
         console.error('Failed to cleanup key vault secret:', e.message);
       }
@@ -157,17 +162,18 @@ export class AuthService {
     const vaultKeyName = `wallet-key-${userId}`;
 
     // Initialize Azure Key Vault client
-    const credential = new ClientSecretCredential(
-      process.env.AZURE_TENANT_ID,
-      process.env.AZURE_CLIENT_ID,
-      process.env.AZURE_CLIENT_SECRET,
-    );
-    const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
-    const vaultClient = new SecretClient(vaultUrl, credential);
+    // const credential = new ClientSecretCredential(
+    //   process.env.AZURE_TENANT_ID,
+    //   process.env.AZURE_CLIENT_ID,
+    //   process.env.AZURE_CLIENT_SECRET,
+    // );
+    // const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
+    // const vaultClient = new SecretClient(vaultUrl, credential);
 
     try {
       // Save private key in Azure Key Vault
-      await vaultClient.setSecret(vaultKeyName, privateKey);
+      // await vaultClient.setSecret(vaultKeyName, privateKey);
+      await this.azureKeyVaultService.setPrivateKey(vaultKeyName, privateKey);
 
       // Create user + wallet in a single transaction
       const [newUser] = await this.prisma.$transaction([
@@ -198,7 +204,8 @@ export class AuthService {
     } catch (err) {
       // Rollback: delete the key vault secret if DB failed
       try {
-        await vaultClient.beginDeleteSecret(vaultKeyName);
+        // await vaultClient.beginDeleteSecret(vaultKeyName);
+        await this.azureKeyVaultService.deletePrivateKey(vaultKeyName)
       } catch (e) {
         console.error('Vault cleanup failed:', e.message);
       }

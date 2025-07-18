@@ -73,6 +73,7 @@ export default function AddElection() {
                         <input
                             id="startImmediately"
                             name="startImmediately"
+                            readOnly
                             type="checkbox"
                             className="h-5 w-5 cursor-pointer rounded"
                             checked={startImmediately}

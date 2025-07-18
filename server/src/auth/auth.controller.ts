@@ -11,6 +11,7 @@ import {
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateUserDto, LoginUserDto } from './dto/user.dto';
+import { User } from '@/common/decorators/user.decorator'
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
@@ -19,8 +20,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@Request() req) {
-    return this.authService.getUserData(req.user.userId);
+  getProfile(@User('userId') userId) {
+    return this.authService.getUserData(userId);
     // return req.user; // set by JwtStrategy.validate()
   }
 

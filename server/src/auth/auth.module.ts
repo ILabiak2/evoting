@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { PrismaService } from '../prisma/prisma.service';
+import {AzureKeyVaultService} from '@/services/azure-key-vault.service'
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
       signOptions: { expiresIn: '15d' },
     }),
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, PrismaService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, PrismaService, AzureKeyVaultService],
   controllers: [AuthController],
 })
 export class AuthModule {}
