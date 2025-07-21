@@ -7,6 +7,9 @@ import {
   Matches,
   IsBoolean,
   IsArray,
+  IsNumber,
+  Min,
+  Max
 } from 'class-validator';
 
 export class CreateElectionDto {
@@ -16,10 +19,12 @@ export class CreateElectionDto {
   name: string;
 
   @IsBoolean()
-  isActive: boolean;
+  startImmediately: boolean;
 
-  @IsBoolean()
-  startedManually: boolean;
+  @IsNumber()
+  @Min(0)
+  @Max(8000000000)
+  voterLimit: number;
 
   @IsArray()
   @IsString({ each: true })

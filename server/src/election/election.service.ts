@@ -7,9 +7,13 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 export class ElectionService {
   constructor(private readonly blockchain: BlockchainService) {}
 
-  create(createElectionDto: CreateElectionDto, userId: String) {
+  create(createElectionDto: CreateElectionDto, userId: string) {
+    const {name, voterLimit, startImmediately, candidates} = createElectionDto
+    return this.blockchain.createElectionWithSignature(userId, name,startImmediately,voterLimit, candidates)
+  }
 
-    return 'This action adds a new election';
+  async checkStatus(txHash: string) {
+    return this.blockchain.checkElectionCreated(txHash);
   }
 
   getData() {

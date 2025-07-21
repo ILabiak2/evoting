@@ -5,14 +5,21 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Trash2 } from 'lucide-react';
+import { useCreateElection } from '@/lib/hooks/useCreateElection';
+import { useElectionStatus } from '@/lib/hooks/useElectionStatus';
 
 
 export default function AddElection() {
     const [errors, setErrors] = useState([]);
-    const [generalError, setGeneralError] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [startImmediately, setStartImmediately] = useState(true);
+    const [electionName, setElectionName] = useState('');
+    const [voterLimit, setVoterLimit] = useState('');
     const [candidateName, setCandidateName] = useState('')
+    const [txHash, setTxHash] = useState(null);
+    const createElection = useCreateElection();
+    const { data: statusData, isLoading: polling, error: statusError } = useElectionStatus(txHash);
     const [candidates, setCandidates] = useState([
         { id: 1, name: 'Alice Johnson' },
         { id: 2, name: 'Bob Smith' },
@@ -36,6 +43,26 @@ export default function AddElection() {
         }])
     }
 
+    const handleSubmit = async (e) => {
+        setTxHash(null)
+
+        try {
+            const data = {
+                name: electionName,
+                voterLimit: Number.parseInt(voterLimit) || 0,
+                startImmediately,
+                candidates: candidates.map((el) => el.name),
+            };
+
+            const result = await createElection.mutateAsync(data);
+            setTxHash(result.txHash);
+        } catch (error) {
+            const message =
+                error?.response?.data?.message || error?.message || 'Failed to submit transaction';
+            setErrorMessage(message);
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 md:gap-4 md:grid-cols-2 overflow-y-auto h-full w-full p-2 md:p-10 bg-white dark:bg-neutral-950">
 
@@ -47,16 +74,23 @@ export default function AddElection() {
                 <p className="mt-2 max-w-sm md:pb-5 text-sm text-neutral-600 dark:text-neutral-300">
                     Your public address: 0x...23
                 </p>
-                <form className="mt-4 md:my-4" onSubmit={() => { console.log('123') }}>
-                    {generalError && (
+                <form className="mt-4 md:my-4">
+                    {/* {errorMessage && (
                         <div className="mb-4 text-sm text-red-600 font-medium">
-                            {generalError}
+                            {errorMessage}
                         </div>
                     )}
-                    {errors[0] && <p className="text-sm mb-1 text-red-500">{errors[0]}</p>}
+                    {errors[0] && <p className="text-sm mb-1 text-red-500">{errors[0]}</p>} */}
                     <LabelInputContainer className="mb-4 md:mb-10">
                         <Label htmlFor="name">Election name</Label>
-                        <Input id="name" name="name" placeholder="Parlament Election" type="text" />
+                        <Input
+                            id="name"
+                            name="name"
+                            placeholder="Parlament Election"
+                            value={electionName}
+                            onChange={(e) => setElectionName(e.target.value)}
+                            type="text"
+                        />
                     </LabelInputContainer>
                     <LabelInputContainer className="mb-4">
                         <Label htmlFor="voterLimit">Voter limit <span className="text-neutral-400">(optional)</span></Label>
@@ -65,6 +99,8 @@ export default function AddElection() {
                             id="voterLimit"
                             name="voterLimit"
                             type="number"
+                            value={voterLimit}
+                            onChange={(e) => setVoterLimit(e.target.value)}
                             placeholder="e.g. 100"
                             min="0"
                         />
@@ -87,8 +123,8 @@ export default function AddElection() {
             </div>
 
             <div
-                className="w-full md:shadow-input md:dark:shadow-neutral-900 order-3 md:order-2 h-full border-0 z-20 md:mt-5 md:mx-5 md:max-w-md rounded-2xl p-4  md:p-8 ">
-                <form className=" flex h-full flex-col justify-between" onSubmit={() => { console.log('123') }}>
+                className="w-full md:shadow-input md:dark:shadow-neutral-900 order-3 md:order-2  border-0 z-20 md:mt-5 md:mx-5 md:max-w-md rounded-2xl p-4 md:p-8 ">
+                <form className=" flex  flex-col justify-between" onSubmit={() => { console.log('123') }}>
                     <div className="">
                         <h2 className="text-3xl font-bold text-neutral-800 dark:text-neutral-200">
                             Candidates
@@ -122,12 +158,35 @@ export default function AddElection() {
             <div className="flex flex-col h-full order-4 md:order-3 justify-between  md:shadow-input md:dark:shadow-neutral-900 border-0 z-20 md:mt-5  md:mx-5 w-full md:max-w-md rounded-2xl p-4 md:p-8">
                 <div
                     className="mt-2 h-[1px] mb-4 md:mb-10 w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent dark:via-neutral-700" />
-                <div className="">
+                {(errorMessage || statusError) && (
+                    <p className="mb-4 text-sm text-red-600 font-medium">
+                        {errorMessage || `Status polling error: ${statusError?.message}`}
+                    </p>
+                )}
+                {txHash && <div className="p-2 border-1 rounded-xl flex flex-col justify-center text-neutral-400 mb-2">
+                    <div className="flex flex-row items-center ">
+                        {!statusData?.confirmed && (
+                            <>
+                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                                <p className="ml-2 align-center">Election is being created...</p>
+
+                            </>
+                        )}
+                        {statusData?.confirmed && <p className="ml-2 align-center">🎉 Election created with ID: {statusData.electionId}</p>}
+                    </div>
+                    <div className="flex flex-row mt-2">
+                        <p>Transaction:&nbsp;</p>
+                        <a className="underline text-primary" href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer">{txHash.slice(0, 4)}...{txHash.slice(-4)}</a>
+                    </div>
+                </div>
+                }
+                <div>
                     <button
                         className={cn("group/btn relative block h-10 w-full cursor-pointer rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset]",
-                            loading && "opacity-50 cursor-not-allowed"
+                            createElection.isPending || (txHash && !statusData?.confirmed) && "opacity-50 cursor-not-allowed"
                         )}
-                        type="submit">
+                        onClick={handleSubmit}
+                        disabled={createElection.isPending || (txHash && !statusData?.confirmed)}>
                         Create election &rarr;
                         <BottomGradient />
                     </button>

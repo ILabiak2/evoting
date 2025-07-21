@@ -11,4 +11,8 @@ module.exports = {
       accounts: [process.env.PRIVATE_KEY],
     },
   },
+  typechain: {
+    outDir: 'typechain-types',
+    target: 'ethers-v6',
+  },
 };
