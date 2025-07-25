@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("hardhat-tracer");
 require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -12,7 +13,13 @@ module.exports = {
     },
   },
   typechain: {
-    outDir: 'typechain-types',
-    target: 'ethers-v6',
+    outDir: "typechain-types",
+    target: "ethers-v6",
+  },
+  etherscan: {
+    apiKey: "YFCQQKSBKBAYSV9S5GPMS88MX97TGKEGTG",
+  },
+  sourcify: {
+    enabled: true,
   },
 };
