@@ -17,7 +17,7 @@ module.exports = {
     target: "ethers-v6",
   },
   etherscan: {
-    apiKey: "YFCQQKSBKBAYSV9S5GPMS88MX97TGKEGTG",
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
   sourcify: {
     enabled: true,
