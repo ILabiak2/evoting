@@ -85,6 +85,7 @@ contract VotingSystem is EIP712 {
     mapping(uint256 => Election) public elections;
     mapping(uint256 => address[]) internal electionVoters;
     mapping(uint256 => Candidate[]) public electionCandidates;
+    mapping(address => uint256[]) private userElections;
 
     // Events
     event ElectionCreated(uint256 indexed electionId, string name);
@@ -132,7 +133,7 @@ contract VotingSystem is EIP712 {
         if (_startImmediately) {
             e.startTime = block.timestamp;
             e.isActive = true;
-            e.startedManually = true;
+            e.startedManually = false;
         } else {
             e.startTime = 0;
             e.isActive = false;
@@ -141,7 +142,7 @@ contract VotingSystem is EIP712 {
         e.endTime = 0; // Not set at creation
 
         _addCandidates(e, _candidateNames);
-
+        userElections[msg.sender].push(electionCounter);
         emit ElectionCreated(electionCounter, _name);
         electionCounter++;
     }
@@ -178,7 +179,7 @@ contract VotingSystem is EIP712 {
         if (_startImmediately) {
             e.startTime = block.timestamp;
             e.isActive = true;
-            e.startedManually = true;
+            e.startedManually = false;
         } else {
             e.startTime = 0;
             e.isActive = false;
@@ -187,7 +188,7 @@ contract VotingSystem is EIP712 {
         e.endTime = 0; // Not set at creation
 
         _addCandidates(e, _candidateNames);
-
+        userElections[_creator].push(electionCounter);
         emit ElectionCreated(electionCounter, _name);
         electionCounter++;
     }
@@ -532,6 +533,63 @@ contract VotingSystem is EIP712 {
         );
         for (uint256 i = 0; i < count; i++) {
             result[i] = temp[i];
+        }
+
+        return result;
+    }
+
+    function getMyElections()
+        external
+        view
+        returns (ElectionWithCandidates[] memory)
+    {
+        return _getUserElections(msg.sender);
+    }
+
+    function getUserElections(
+        address user
+    ) external view returns (ElectionWithCandidates[] memory) {
+        return _getUserElections(user);
+    }
+
+    function _getUserElections(
+        address user
+    ) internal view returns (ElectionWithCandidates[] memory) {
+        uint256[] memory ids = userElections[user];
+        uint256 count = ids.length;
+
+        ElectionWithCandidates[] memory result = new ElectionWithCandidates[](
+            count
+        );
+
+        for (uint256 i = 0; i < count; i++) {
+            uint256 id = ids[i];
+            Election storage e = elections[id];
+
+            CandidateView[] memory candidates = new CandidateView[](
+                e.candidateCount
+            );
+            for (uint256 j = 0; j < e.candidateCount; j++) {
+                Candidate storage c = e.candidates[j];
+                candidates[j] = CandidateView({
+                    id: c.id,
+                    name: c.name,
+                    voteCount: c.voteCount
+                });
+            }
+
+            result[i] = ElectionWithCandidates({
+                id: e.id,
+                name: e.name,
+                startTime: e.startTime,
+                endTime: e.endTime,
+                isActive: e.isActive,
+                startedManually: e.startedManually,
+                endedManually: e.endedManually,
+                candidateCount: e.candidateCount,
+                voterLimit: e.voterLimit,
+                candidates: candidates
+            });
         }
 
         return result;

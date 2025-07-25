@@ -3,7 +3,14 @@ import { ethers } from 'ethers';
 import { VotingSystem } from './abi/VotingSystem';
 import * as VotingSystemABI from './abi/VotingSystem.json';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
-import { text } from 'stream/consumers';
+
+declare global {
+  interface BigInt {
+      toJSON(): Number;
+  }
+}
+
+BigInt.prototype.toJSON = function () { return Number(this) }
 
 @Injectable()
 export class BlockchainService {
@@ -120,6 +127,58 @@ export class BlockchainService {
       confirmed: true,
       electionId: Number(event.args?.electionId),
     };
+  }
+
+  async getUserElections(userId: string) {
+    const vaultKeyName = `wallet-key-${userId}`;
+    // console.log(vaultKeyName);
+    const privateKey =
+      await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
+    const userWallet = new ethers.Wallet(privateKey, this.provider);
+
+    const contractWithSigner = this.contract.connect(userWallet);
+
+    const electionsRaw = await contractWithSigner.getMyElections();
+
+    const elections = electionsRaw.map((election: any[]) => {
+      const [
+        id,
+        name,
+        startTime,
+        endTime,
+        isActive,
+        startedManually,
+        endedManually,
+        candidateCount,
+        // Possibly more fields here...
+        ,
+        candidatesRaw
+      ] = election;
+  
+      const candidates = candidatesRaw.map(([id, name, votes]: any[]) => ({
+        id,
+        name,
+        votes: Number(votes),
+      }));
+
+      const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+  
+      return {
+        id,
+        name,
+        startTime,
+        endTime,
+        isActive,
+        startedManually,
+        endedManually,
+        candidateCount,
+        candidates,
+        totalVotes
+      };
+    });
+  
+
+    return elections;
   }
 
   // If you need to send transactions:

@@ -12,6 +12,19 @@ npx typechain --target ethers-v6 --out-dir src/types artifacts/contracts/VotingS
 
 Command to verify smart contract
 
+npx hardhat clean
 ```bash
 npx hardhat verify --network arbitrumSepolia <contract>
+```
+
+Run test
+
+```bash
+npx hardhat test
+```
+
+Generate types for contract
+
+```bash
+npx hardhat typechain
 ```

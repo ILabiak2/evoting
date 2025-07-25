@@ -34,8 +34,8 @@ export class ElectionController {
   }
 
   @Get()
-  findAll() {
-    return this.electionService.getData();
+  findAll(@User('userId') userId: string) {
+    return this.electionService.getUserElections(userId);
   }
 
   @Get(':id')

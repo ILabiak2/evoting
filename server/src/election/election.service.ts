@@ -16,8 +16,8 @@ export class ElectionService {
     return this.blockchain.checkElectionCreated(txHash);
   }
 
-  getData() {
-    return this.blockchain.getSomething();
+  getUserElections(userId: string) {
+    return this.blockchain.getUserElections(userId);
   }
 
   findAll() {

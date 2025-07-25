@@ -104,8 +104,10 @@ export interface VotingSystemInterface extends Interface {
       | "getAllElections"
       | "getCandidates"
       | "getElectionsByIds"
+      | "getMyElections"
       | "getMyVote"
       | "getResults"
+      | "getUserElections"
       | "startElection"
       | "vote"
       | "voteWithSignature"
@@ -178,12 +180,20 @@ export interface VotingSystemInterface extends Interface {
     values: [BigNumberish[]]
   ): string;
   encodeFunctionData(
+    functionFragment: "getMyElections",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "getMyVote",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getResults",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getUserElections",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "startElection",
@@ -252,8 +262,16 @@ export interface VotingSystemInterface extends Interface {
     functionFragment: "getElectionsByIds",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "getMyElections",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "getMyVote", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getResults", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getUserElections",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "startElection",
     data: BytesLike
@@ -501,6 +519,12 @@ export interface VotingSystem extends BaseContract {
     "view"
   >;
 
+  getMyElections: TypedContractMethod<
+    [],
+    [VotingSystem.ElectionWithCandidatesStructOutput[]],
+    "view"
+  >;
+
   getMyVote: TypedContractMethod<
     [_electionId: BigNumberish],
     [
@@ -516,6 +540,12 @@ export interface VotingSystem extends BaseContract {
   getResults: TypedContractMethod<
     [_electionId: BigNumberish],
     [VotingSystem.CandidateStructOutput[]],
+    "view"
+  >;
+
+  getUserElections: TypedContractMethod<
+    [user: AddressLike],
+    [VotingSystem.ElectionWithCandidatesStructOutput[]],
     "view"
   >;
 
@@ -683,6 +713,13 @@ export interface VotingSystem extends BaseContract {
     "view"
   >;
   getFunction(
+    nameOrSignature: "getMyElections"
+  ): TypedContractMethod<
+    [],
+    [VotingSystem.ElectionWithCandidatesStructOutput[]],
+    "view"
+  >;
+  getFunction(
     nameOrSignature: "getMyVote"
   ): TypedContractMethod<
     [_electionId: BigNumberish],
@@ -700,6 +737,13 @@ export interface VotingSystem extends BaseContract {
   ): TypedContractMethod<
     [_electionId: BigNumberish],
     [VotingSystem.CandidateStructOutput[]],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getUserElections"
+  ): TypedContractMethod<
+    [user: AddressLike],
+    [VotingSystem.ElectionWithCandidatesStructOutput[]],
     "view"
   >;
   getFunction(

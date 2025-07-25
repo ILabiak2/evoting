@@ -76,6 +76,27 @@ describe("VotingSystem", function () {
       expect(elections[3].name).to.equal(`Election 9`);
     });
 
+    it("Отримання інформації про голосування користувача", async () => {
+
+      let elections = await voting.connect(user1).getMyElections();
+      expect(elections.length).to.equal(0);
+
+      for (let i = 0; i < 3; i++) {
+        await voting.connect(user1).createElection(`Election ${i}`, false, 0, ["Кандидат 1"]);
+      }
+
+      for (let i = 0; i < 5; i++) {
+        await voting.connect(user2).createElection(`Election2 ${i}`, false, 0, ["Кандидат 2"]);
+      }
+
+      elections = await voting.connect(user1).getMyElections();
+
+      expect(elections.length).to.equal(3);
+      expect(elections[0].name).to.equal(`Election 0`);
+      expect(elections[1].name).to.equal(`Election 1`);
+      expect(elections[2].name).to.equal(`Election 2`);
+    });
+
     it("Створює голосування з підписом творця голосування", async function () {
       const electionsBefore = await voting.getAllElections();
       expect(electionsBefore.length).to.equal(0);
