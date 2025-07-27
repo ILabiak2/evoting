@@ -43,14 +43,16 @@ export default function Dashboard() {
                 </p>
               </>
             )}
-            <button
-              onClick={() => {
-                window.location.href = "/election-create";
-              }}
-              className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
-            >
-              Create election
-            </button>
+            {user?.role === "creator" && (
+              <button
+                onClick={() => {
+                  window.location.href = "/election-create";
+                }}
+                className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+              >
+                Create election
+              </button>
+            )}
           </div>
         </div>
         <div className="flex gap-2 flex-1 overflow-y-auto">
@@ -69,7 +71,7 @@ export default function Dashboard() {
               </ul>
             ) : (
               <>
-                {user?.role === "creatorf" && (
+                {user?.role === "creator" && (
                   <div className="flex flex-col justify-center items-center h-full w-full">
                     <p className="text-2xl text-center font-bold mb-4">
                       No elections yet. <br /> Create your first election
@@ -84,7 +86,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                 )}
-                {user?.role === "creator" && ( //user
+                {user?.role === "user" && (
                   <div className="flex flex-col justify-center items-center h-full w-full">
                     <p className="text-2xl text-center font-bold mb-4">
                       You're not invited to any elections yet. <br /> Join an
@@ -168,7 +170,12 @@ const ElectionInfo = ({ area, isActive, title, votes, userRole }) => {
                   Votes: {votes}
                 </h3>
                 <button className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
-                  {userRole === "creator" ? "Manage" : isActive ? "Vote" : "Results"}&rarr;
+                  {userRole === "creator"
+                    ? "Manage"
+                    : isActive
+                    ? "Vote"
+                    : "Results"}
+                  &rarr;
                 </button>
               </div>
             </div>
