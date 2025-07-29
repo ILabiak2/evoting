@@ -22,7 +22,7 @@ describe("VotingSystem", function () {
       expect(elections.length).to.equal(1);
       expect(elections[0].name).to.equal("Голосування 1");
       expect(elections[0].isActive).to.equal(true);
-      expect(elections[0].startedManually).to.equal(true);
+      expect(elections[0].startedManually).to.equal(false);
 
       const activeElections = await voting.getActiveElections();
 
@@ -144,7 +144,7 @@ describe("VotingSystem", function () {
       expect(elections.length).to.equal(1);
       expect(elections[0].name).to.equal("Election via signature");
       expect(elections[0].isActive).to.equal(true);
-      expect(elections[0].startedManually).to.equal(true);
+      expect(elections[0].startedManually).to.equal(false);
 
       const activeElections = await voting.getActiveElections();
 

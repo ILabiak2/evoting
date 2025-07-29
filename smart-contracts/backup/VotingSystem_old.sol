@@ -97,12 +97,12 @@ contract VotingSystem is EIP712 {
         address voter
     );
 
-    modifier onlyAdmin() { //BaseElection
+    modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
         _;
     }
 
-    modifier onlyCreatorOrAdmin(uint256 _electionId) { //BaseElection
+    modifier onlyCreatorOrAdmin(uint256 _electionId) {
         Election storage e = elections[_electionId];
         require(
             msg.sender == e.creator || msg.sender == admin,
@@ -111,14 +111,14 @@ contract VotingSystem is EIP712 {
         _;
     }
 
-    modifier validElection(uint256 _electionId) { //nowhere for now
+    modifier validElection(uint256 _electionId) {
         require(_electionId < electionCounter, "Invalid election");
         _;
     }
 
     // === ADMIN ACTIONS ===
 
-    function createElection( //BaseElection && PublicElection constructor && VotingFactory
+    function createElection(
         string memory _name,
         bool _startImmediately,
         uint256 _voterLimit,
@@ -147,7 +147,7 @@ contract VotingSystem is EIP712 {
         electionCounter++;
     }
 
-    function createElectionWithSignature( // VotingFactory
+    function createElectionWithSignature(
         string memory _name,
         bool _startImmediately,
         uint256 _voterLimit,
@@ -193,7 +193,7 @@ contract VotingSystem is EIP712 {
         electionCounter++;
     }
 
-    function addCandidates( // BaseElection
+    function addCandidates(
         uint256 _electionId,
         string[] memory _names
     ) external onlyCreatorOrAdmin(_electionId) validElection(_electionId) {
@@ -201,7 +201,7 @@ contract VotingSystem is EIP712 {
         _addCandidates(e, _names);
     }
 
-    function _addCandidates( //BaseElection
+    function _addCandidates(
         Election storage e,
         string[] memory _names
     ) internal {
@@ -258,7 +258,7 @@ contract VotingSystem is EIP712 {
     //     }
     // }
 
-    function startElection( //BaseElection
+    function startElection(
         uint256 _electionId
     ) external validElection(_electionId) onlyCreatorOrAdmin(_electionId) {
         Election storage e = elections[_electionId];
@@ -270,7 +270,7 @@ contract VotingSystem is EIP712 {
         emit ElectionStarted(_electionId);
     }
 
-    function endElection( //BaseElection
+    function endElection(
         uint256 _electionId
     ) external validElection(_electionId) onlyCreatorOrAdmin(_electionId) {
         Election storage e = elections[_electionId];
@@ -283,14 +283,14 @@ contract VotingSystem is EIP712 {
 
     // === VOTING ===
 
-    function vote( //PublicElection 
+    function vote(
         uint256 _electionId,
         uint256 _candidateId
     ) external validElection(_electionId) {
         _internalVote(_electionId, _candidateId, msg.sender);
     }
 
-    function voteWithSignature( //PublicElection 
+    function voteWithSignature(
         uint256 _electionId,
         uint256 _candidateId,
         address _voter,
@@ -331,7 +331,7 @@ contract VotingSystem is EIP712 {
         _internalVote(_electionId, _candidateId, _voter);
     }
 
-    function _internalVote( //PublicElection
+    function _internalVote(
         uint256 _electionId,
         uint256 _candidateId,
         address _voter
@@ -365,7 +365,7 @@ contract VotingSystem is EIP712 {
 
     // === GETTERS ===
 
-    function getMyVote( //PublicElection
+    function getMyVote(
         uint256 _electionId
     )
         external
@@ -389,7 +389,7 @@ contract VotingSystem is EIP712 {
         }
     }
 
-    function getActiveElections() // VotingFactory to do
+    function getActiveElections()
         external
         view
         returns (ElectionWithCandidates[] memory)
@@ -443,7 +443,7 @@ contract VotingSystem is EIP712 {
         return result;
     }
 
-    function getAllElections() // VotingFactory to do
+    function getAllElections()
         external
         view
         returns (ElectionWithCandidates[] memory)
@@ -484,7 +484,7 @@ contract VotingSystem is EIP712 {
         return result;
     }
 
-    function getElectionsByIds( // VotingFactory to do
+    function getElectionsByIds(
         uint256[] calldata ids
     ) external view returns (ElectionWithCandidates[] memory) {
         // Тимчасовий масив максимальної довжини
@@ -538,7 +538,7 @@ contract VotingSystem is EIP712 {
         return result;
     }
 
-    function getMyElections() // VotingFactory to do
+    function getMyElections()
         external
         view
         returns (ElectionWithCandidates[] memory)
@@ -546,13 +546,13 @@ contract VotingSystem is EIP712 {
         return _getUserElections(msg.sender);
     }
 
-    function getUserElections( // VotingFactory to do
+    function getUserElections(
         address user
     ) external view returns (ElectionWithCandidates[] memory) {
         return _getUserElections(user);
     }
 
-    function _getUserElections( // VotingFactory to do
+    function _getUserElections(
         address user
     ) internal view returns (ElectionWithCandidates[] memory) {
         uint256[] memory ids = userElections[user];
@@ -595,7 +595,7 @@ contract VotingSystem is EIP712 {
         return result;
     }
 
-    function getCandidates( // Maybe not needed
+    function getCandidates(
         uint256 _electionId
     )
         external
@@ -616,8 +616,8 @@ contract VotingSystem is EIP712 {
         return result;
     }
 
-    function _getCandidates( // PublicElection
-         uint256 _electionId
+    function _getCandidates(
+        uint256 _electionId
     ) internal view returns (Candidate[] memory) {
         Election storage e = elections[_electionId];
         Candidate[] memory result = new Candidate[](e.candidateCount);
@@ -627,7 +627,7 @@ contract VotingSystem is EIP712 {
         return result;
     }
 
-    function getResults( // publicElection
+    function getResults(
         uint256 _electionId
     ) external view validElection(_electionId) returns (Candidate[] memory) {
         Election storage e = elections[_electionId];
@@ -642,7 +642,7 @@ contract VotingSystem is EIP712 {
 
     // === SIGNATURE UTIL ===
 
-    function recoverSigner( // BaseElection
+    function recoverSigner(
         bytes32 _ethSignedMessageHash,
         bytes memory _sig
     ) internal pure returns (address) {
@@ -650,7 +650,7 @@ contract VotingSystem is EIP712 {
         return ecrecover(_ethSignedMessageHash, v, r, s);
     }
 
-    function splitSignature( // BaseElection
+    function splitSignature(
         bytes memory sig
     ) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
         require(sig.length == 65, "Bad signature length");
