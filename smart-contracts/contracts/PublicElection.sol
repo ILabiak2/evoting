@@ -2,12 +2,15 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+// import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
 import "./BaseElection.sol";
 
-contract PublicElection is BaseElection, EIP712 {
-    constructor(
+contract PublicElection is BaseElection, EIP712Upgradeable {
+    bool private initialized;
+
+    function initialize(
         string memory _name,
         string[] memory _candidateNames,
         address _creator,
@@ -15,8 +18,11 @@ contract PublicElection is BaseElection, EIP712 {
         uint256 _electionId,
         uint256 _voterLimit,
         bool _startImmediately
-    )
-        BaseElection(
+    ) external virtual initializer {
+        require(!initialized, "Already initialized");
+        initialized = true;
+
+        __BaseElection_init(
             _name,
             _candidateNames,
             _creator,
@@ -24,9 +30,31 @@ contract PublicElection is BaseElection, EIP712 {
             _electionId,
             _voterLimit,
             _startImmediately
-        )
-        EIP712("PublicElection", "1")
-    {}
+        );
+
+        __EIP712_init("PublicElection", "1");
+    }
+
+    // constructor(
+    //     string memory _name,
+    //     string[] memory _candidateNames,
+    //     address _creator,
+    //     address _admin,
+    //     uint256 _electionId,
+    //     uint256 _voterLimit,
+    //     bool _startImmediately
+    // )
+    //     BaseElection(
+    //         _name,
+    //         _candidateNames,
+    //         _creator,
+    //         _admin,
+    //         _electionId,
+    //         _voterLimit,
+    //         _startImmediately
+    //     )
+    //     EIP712("PublicElection", "1")
+    // {}
 
     struct Vote {
         uint256 electionId;
@@ -63,7 +91,10 @@ contract PublicElection is BaseElection, EIP712 {
     // 🗳 Voting Logic
     // ------------------------
 
-    function _internalVote(uint256 _candidateId, address _voter) internal override {
+    function _internalVote(
+        uint256 _candidateId,
+        address _voter
+    ) internal override {
         require(isActive && !endedManually, "Election not active");
         require(!hasVoted[_voter], "Already voted");
         require(_candidateId < candidates.length, "Invalid candidate");

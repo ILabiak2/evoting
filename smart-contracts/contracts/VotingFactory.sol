@@ -5,13 +5,18 @@ import "./PublicElection.sol";
 import "./PrivateElection.sol";
 import {ElectionData} from "./interfaces/ElectionData.sol";
 import {ElectionMetadata} from "./lib/ElectionMetadata.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract VotingFactory {
     address public admin;
+    address public publicElectionImpl;
+    address public privateElectionImpl;
 
-    constructor() {
-        admin = msg.sender;
-    }
+constructor(address _publicElectionImpl, address _privateElectionImpl) {
+    admin = msg.sender;
+    publicElectionImpl = _publicElectionImpl;
+    privateElectionImpl = _privateElectionImpl;
+}
 
     enum ElectionType {
         Public,
@@ -23,6 +28,12 @@ contract VotingFactory {
         ElectionType electionType;
         string name;
         address creator;
+    }
+
+    struct FullElectionInfo {
+        ElectionMetadata.ElectionWithCandidates coreData;
+        ElectionType electionType;
+        address contractAddress;
     }
 
     uint256 public electionCounter;
@@ -42,7 +53,11 @@ contract VotingFactory {
         uint256 _voterLimit,
         bool _startImmediately
     ) external {
-        PublicElection election = new PublicElection(
+        // 1. Clone the PublicElection implementation
+        address clone = Clones.clone(publicElectionImpl);
+
+        // 2. Initialize the cloned contract
+        PublicElection(clone).initialize(
             name,
             candidateNames,
             msg.sender,
@@ -52,21 +67,24 @@ contract VotingFactory {
             _startImmediately
         );
 
+        // 3. Store metadata in your elections mapping
         elections[electionCounter] = ElectionInfo({
-            contractAddress: address(election),
+            contractAddress: clone,
             electionType: ElectionType.Public,
             name: name,
             creator: msg.sender
         });
 
+        // 4. Emit creation event
         emit ElectionCreated(
             electionCounter,
             ElectionType.Public,
             name,
-            address(election),
+            clone,
             msg.sender
         );
 
+        // 5. Increment counter
         electionCounter++;
     }
 
@@ -76,7 +94,9 @@ contract VotingFactory {
         uint256 _voterLimit,
         bool _startImmediately
     ) external {
-        PrivateElection election = new PrivateElection(
+        address clone = Clones.clone(privateElectionImpl);
+
+        PrivateElection(clone).initialize(
             name,
             candidateNames,
             msg.sender,
@@ -87,17 +107,17 @@ contract VotingFactory {
         );
 
         elections[electionCounter] = ElectionInfo({
-            contractAddress: address(election),
-            electionType: ElectionType.Private,
+            contractAddress: clone,
+            electionType: ElectionType.Public,
             name: name,
             creator: msg.sender
         });
 
         emit ElectionCreated(
             electionCounter,
-            ElectionType.Private,
+            ElectionType.Public,
             name,
-            address(election),
+            clone,
             msg.sender
         );
 
@@ -111,18 +131,121 @@ contract VotingFactory {
         return elections[id];
     }
 
+    //     function getAllElections()
+    //         external
+    //         view
+    //         returns (FullElectionInfo[] memory)
+    //     {
+    //         FullElectionInfo[] memory result = new FullElectionInfo[](
+    //             electionCounter
+    //         );
+    //         for (uint256 i = 0; i < electionCounter; i++) {
+    //             address electionAddr = elections[i].contractAddress;
+    //             ElectionMetadata.ElectionWithCandidates memory core = ElectionData(
+    //                 electionAddr
+    //             ).getCoreElectionData();
+
+    //             result[i] = FullElectionInfo({
+    //                 coreData: core,
+    //                 electionType: elections[i].electionType,
+    //                 contractAddress: electionAddr
+    //             });
+    //         }
+    //         return result;
+    //     }
+
+    //     function getActiveElections()
+    //         external
+    //         view
+    //         returns (FullElectionInfo[] memory)
+    //     {
+    //         uint256 count;
+
+    //         for (uint256 i = 0; i < electionCounter; i++) {
+    //             address electionAddr = elections[i].contractAddress;
+    //             if (ElectionData(electionAddr).getCoreElectionData().isActive) {
+    //                 count++;
+    //             }
+    //         }
+
+    //         FullElectionInfo[] memory result = new FullElectionInfo[](count);
+    //         uint256 index;
+
+    //         for (uint256 i = 0; i < electionCounter; i++) {
+    //             address electionAddr = elections[i].contractAddress;
+    //             ElectionMetadata.ElectionWithCandidates memory data = ElectionData(
+    //                 electionAddr
+    //             ).getCoreElectionData();
+
+    //             if (data.isActive) {
+    //                 result[index] = FullElectionInfo({
+    //                     coreData: data,
+    //                     electionType: elections[i].electionType,
+    //                     contractAddress: electionAddr
+    //                 });
+    //                 index++;
+    //             }
+    //         }
+
+    //         return result;
+    //     }
+
+    //     function getElectionsByIds(uint256[] memory ids) external view returns (FullElectionInfo[] memory) {
+    //         FullElectionInfo[] memory temp = new FullElectionInfo[](ids.length);
+    //         uint256 count = 0;
+
+    //         for (uint256 i = 0; i < ids.length; i++) {
+    //             uint256 id = ids[i];
+    //             if (id >= electionCounter) {
+    //                 continue;
+    //             }
+
+    //             address electionAddr = elections[id].contractAddress;
+    //             ElectionMetadata.ElectionWithCandidates memory data = ElectionData(
+    //                 electionAddr
+    //             ).getCoreElectionData();
+
+    //             temp[count] = FullElectionInfo({
+    //                 coreData: data,
+    //                 electionType: elections[id].electionType,
+    //                 contractAddress: electionAddr
+    //             });
+    //             count++;
+    //         }
+
+    //         FullElectionInfo[] memory result = new FullElectionInfo[](count);
+    //         for (uint256 i = 0; i < count; i++) {
+    //             result[i] = temp[i];
+    //         }
+    //         return result;
+    //     }
+
+    function _buildFullElectionInfo(
+        uint256 id
+    ) internal view returns (FullElectionInfo memory) {
+        address electionAddr = elections[id].contractAddress;
+        ElectionMetadata.ElectionWithCandidates memory data = ElectionData(
+            electionAddr
+        ).getCoreElectionData();
+
+        return
+            FullElectionInfo({
+                coreData: data,
+                electionType: elections[id].electionType,
+                contractAddress: electionAddr
+            });
+    }
+
     function getAllElections()
         external
         view
-        returns (ElectionMetadata.ElectionWithCandidates[] memory)
+        returns (FullElectionInfo[] memory)
     {
-        ElectionMetadata.ElectionWithCandidates[]
-            memory result = new ElectionMetadata.ElectionWithCandidates[](
-                electionCounter
-            );
+        FullElectionInfo[] memory result = new FullElectionInfo[](
+            electionCounter
+        );
         for (uint256 i = 0; i < electionCounter; i++) {
-            address electionAddr = elections[i].contractAddress;
-            result[i] = ElectionData(electionAddr).getCoreElectionData();
+            result[i] = _buildFullElectionInfo(i);
         }
         return result;
     }
@@ -130,30 +253,52 @@ contract VotingFactory {
     function getActiveElections()
         external
         view
-        returns (ElectionMetadata.ElectionWithCandidates[] memory)
+        returns (FullElectionInfo[] memory)
     {
-    uint256 count;
-
-    for (uint256 i = 0; i < electionCounter; i++) {
-        address electionAddr = elections[i].contractAddress;
-        if (ElectionData(electionAddr).getCoreElectionData().isActive) {
-            count++;
+        // First, count how many are active
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < electionCounter; i++) {
+            if (
+                ElectionData(elections[i].contractAddress)
+                    .getCoreElectionData()
+                    .isActive
+            ) {
+                activeCount++;
+            }
         }
+
+        // Then collect them
+        FullElectionInfo[] memory result = new FullElectionInfo[](activeCount);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < electionCounter; i++) {
+            address addr = elections[i].contractAddress;
+            if (ElectionData(addr).getCoreElectionData().isActive) {
+                result[idx] = _buildFullElectionInfo(i);
+                idx++;
+            }
+        }
+        return result;
     }
 
-    ElectionMetadata.ElectionWithCandidates[] memory result = new ElectionMetadata.ElectionWithCandidates[](count);
-    uint256 index;
+    function getElectionsByIds(
+        uint256[] memory ids
+    ) external view returns (FullElectionInfo[] memory) {
+        FullElectionInfo[] memory temp = new FullElectionInfo[](ids.length);
+        uint256 count = 0;
 
-    for (uint256 i = 0; i < electionCounter; i++) {
-        address electionAddr = elections[i].contractAddress;
-        ElectionMetadata.ElectionWithCandidates memory data = ElectionData(electionAddr).getCoreElectionData();
-
-        if (data.isActive) {
-            result[index] = data;
-            index++;
+        for (uint256 i = 0; i < ids.length; i++) {
+            uint256 id = ids[i];
+            if (id < electionCounter) {
+                temp[count] = _buildFullElectionInfo(id);
+                count++;
+            }
         }
-    }
 
-    return result;
+        // Shrink array
+        FullElectionInfo[] memory result = new FullElectionInfo[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = temp[i];
+        }
+        return result;
     }
 }

@@ -82,7 +82,37 @@ abstract contract BaseElection {
         _;
     }
 
-    constructor(
+    // constructor(
+    //     string memory _name,
+    //     string[] memory _candidateNames,
+    //     address _creator,
+    //     address _admin,
+    //     uint256 _electionId,
+    //     uint256 _voterLimit,
+    //     bool _startImmediately
+    // ) {
+    //     name = _name;
+    //     admin = _admin;
+    //     creator = _creator;
+    //     electionId = _electionId;
+    //     voterLimit = _voterLimit;
+
+    //     if (_startImmediately) {
+    //         startTime = block.timestamp;
+    //         isActive = true;
+    //         startedManually = false;
+    //     } else {
+    //         startTime = 0;
+    //         isActive = false;
+    //         startedManually = true;
+    //     }
+
+    //     endTime = 0; // Not set at creation
+
+    //     _addCandidates(_candidateNames);
+    // }
+
+    function __BaseElection_init(
         string memory _name,
         string[] memory _candidateNames,
         address _creator,
@@ -90,7 +120,7 @@ abstract contract BaseElection {
         uint256 _electionId,
         uint256 _voterLimit,
         bool _startImmediately
-    ) {
+    ) internal {
         name = _name;
         admin = _admin;
         creator = _creator;
@@ -170,7 +200,10 @@ abstract contract BaseElection {
         view
         returns (ElectionMetadata.ElectionWithCandidates memory)
     {
-        ElectionMetadata.CandidateView[] memory list = new ElectionMetadata.CandidateView[](candidates.length);
+        ElectionMetadata.CandidateView[]
+            memory list = new ElectionMetadata.CandidateView[](
+                candidates.length
+            );
 
         for (uint256 i = 0; i < candidates.length; i++) {
             Candidate storage c = candidates[i];
