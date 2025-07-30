@@ -166,6 +166,12 @@ abstract contract BaseElection {
         }
     }
 
+    function addCandidates(
+        string[] memory _names
+    ) external onlyCreatorOrAdmin(electionId) {
+        _addCandidates(_names);
+    }
+
     function isElectionActive() public view returns (bool) {
         if (endedManually) return false;
         if (startedManually) {

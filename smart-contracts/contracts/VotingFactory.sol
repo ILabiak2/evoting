@@ -6,17 +6,21 @@ import "./PrivateElection.sol";
 import {ElectionData} from "./interfaces/ElectionData.sol";
 import {ElectionMetadata} from "./lib/ElectionMetadata.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
-contract VotingFactory {
+contract VotingFactory is EIP712 {
     address public admin;
     address public publicElectionImpl;
     address public privateElectionImpl;
 
-constructor(address _publicElectionImpl, address _privateElectionImpl) {
-    admin = msg.sender;
-    publicElectionImpl = _publicElectionImpl;
-    privateElectionImpl = _privateElectionImpl;
-}
+    constructor(
+        address _publicElectionImpl,
+        address _privateElectionImpl
+    ) EIP712("VotingFactory", "1") {
+        admin = msg.sender;
+        publicElectionImpl = _publicElectionImpl;
+        privateElectionImpl = _privateElectionImpl;
+    }
 
     enum ElectionType {
         Public,
@@ -39,6 +43,16 @@ constructor(address _publicElectionImpl, address _privateElectionImpl) {
     uint256 public electionCounter;
     mapping(uint256 => ElectionInfo) public elections;
 
+    bytes32 public constant PUBLIC_ELECTION_TYPEHASH =
+        keccak256(
+            "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
+        );
+
+    bytes32 public constant PRIVATE_ELECTION_TYPEHASH =
+        keccak256(
+            "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
+        );
+
     event ElectionCreated(
         uint256 indexed id,
         ElectionType electionType,
@@ -47,45 +61,110 @@ constructor(address _publicElectionImpl, address _privateElectionImpl) {
         address creator
     );
 
+    function _createElection(
+        string memory name,
+        string[] memory candidateNames,
+        uint256 _voterLimit,
+        bool _startImmediately,
+        address _creator,
+        ElectionType implType
+    ) internal returns (address) {
+        address clone;
+        ElectionType electionType;
+
+        if (implType == ElectionType.Public) {
+            clone = Clones.clone(publicElectionImpl);
+            PublicElection(clone).initialize(
+                name,
+                candidateNames,
+                _creator,
+                admin,
+                electionCounter,
+                _voterLimit,
+                _startImmediately
+            );
+            electionType = ElectionType.Public;
+        } else if (implType == ElectionType.Private) {
+            clone = Clones.clone(privateElectionImpl);
+            PrivateElection(clone).initialize(
+                name,
+                candidateNames,
+                _creator,
+                admin,
+                electionCounter,
+                _voterLimit,
+                _startImmediately
+            );
+            electionType = ElectionType.Private;
+        }
+
+        elections[electionCounter] = ElectionInfo({
+            contractAddress: clone,
+            electionType: electionType,
+            name: name,
+            creator: _creator
+        });
+
+        emit ElectionCreated(
+            electionCounter,
+            electionType,
+            name,
+            clone,
+            _creator
+        );
+
+        electionCounter++;
+        return clone;
+    }
+
     function createPublicElection(
         string memory name,
         string[] memory candidateNames,
         uint256 _voterLimit,
         bool _startImmediately
-    ) external {
-        // 1. Clone the PublicElection implementation
-        address clone = Clones.clone(publicElectionImpl);
-
-        // 2. Initialize the cloned contract
-        PublicElection(clone).initialize(
+    ) external returns (address) {
+        return _createElection(
             name,
             candidateNames,
-            msg.sender,
-            admin,
-            electionCounter,
             _voterLimit,
-            _startImmediately
+            _startImmediately,
+            msg.sender,
+            ElectionType.Public
+        );
+    }
+
+    function createPublicElectionWithSignature(
+        string memory name,
+        bool _startImmediately,
+        uint256 _voterLimit,
+        address _creator,
+        string[] memory candidateNames,
+        bytes memory signature
+    ) external returns (address) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PUBLIC_ELECTION_TYPEHASH,
+                keccak256(bytes(name)),
+                _startImmediately,
+                _voterLimit,
+                _creator
+            )
         );
 
-        // 3. Store metadata in your elections mapping
-        elections[electionCounter] = ElectionInfo({
-            contractAddress: clone,
-            electionType: ElectionType.Public,
-            name: name,
-            creator: msg.sender
-        });
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
 
-        // 4. Emit creation event
-        emit ElectionCreated(
-            electionCounter,
-            ElectionType.Public,
-            name,
-            clone,
-            msg.sender
-        );
+        require(signer == _creator, "Invalid signature");
 
-        // 5. Increment counter
-        electionCounter++;
+        return
+            _createElection(
+                name,
+                candidateNames,
+                _voterLimit,
+                _startImmediately,
+                _creator,
+                ElectionType.Public
+            );
     }
 
     function createPrivateElection(
@@ -93,35 +172,50 @@ constructor(address _publicElectionImpl, address _privateElectionImpl) {
         string[] memory candidateNames,
         uint256 _voterLimit,
         bool _startImmediately
-    ) external {
-        address clone = Clones.clone(privateElectionImpl);
+    ) external returns (address) {
+        return
+            _createElection(
+                name,
+                candidateNames,
+                _voterLimit,
+                _startImmediately,
+                msg.sender,
+                ElectionType.Private
+            );
+    }
 
-        PrivateElection(clone).initialize(
-            name,
-            candidateNames,
-            msg.sender,
-            admin,
-            electionCounter,
-            _voterLimit,
-            _startImmediately
+    function createPrivateElectionWithSignature(
+        string memory name,
+        bool _startImmediately,
+        uint256 _voterLimit,
+        address _creator,
+        string[] memory candidateNames,
+        bytes memory signature
+    ) external returns (address) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PRIVATE_ELECTION_TYPEHASH,
+                keccak256(bytes(name)),
+                _startImmediately,
+                _voterLimit,
+                _creator
+            )
         );
 
-        elections[electionCounter] = ElectionInfo({
-            contractAddress: clone,
-            electionType: ElectionType.Public,
-            name: name,
-            creator: msg.sender
-        });
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
 
-        emit ElectionCreated(
-            electionCounter,
-            ElectionType.Public,
-            name,
-            clone,
-            msg.sender
-        );
+        require(signer == _creator, "Invalid signature");
 
-        electionCounter++;
+        return
+            _createElection(
+                name,
+                candidateNames,
+                _voterLimit,
+                _startImmediately,
+                _creator,
+                ElectionType.Private
+            );
     }
 
     function getElection(
@@ -130,95 +224,6 @@ constructor(address _publicElectionImpl, address _privateElectionImpl) {
         require(id < electionCounter, "Invalid election ID");
         return elections[id];
     }
-
-    //     function getAllElections()
-    //         external
-    //         view
-    //         returns (FullElectionInfo[] memory)
-    //     {
-    //         FullElectionInfo[] memory result = new FullElectionInfo[](
-    //             electionCounter
-    //         );
-    //         for (uint256 i = 0; i < electionCounter; i++) {
-    //             address electionAddr = elections[i].contractAddress;
-    //             ElectionMetadata.ElectionWithCandidates memory core = ElectionData(
-    //                 electionAddr
-    //             ).getCoreElectionData();
-
-    //             result[i] = FullElectionInfo({
-    //                 coreData: core,
-    //                 electionType: elections[i].electionType,
-    //                 contractAddress: electionAddr
-    //             });
-    //         }
-    //         return result;
-    //     }
-
-    //     function getActiveElections()
-    //         external
-    //         view
-    //         returns (FullElectionInfo[] memory)
-    //     {
-    //         uint256 count;
-
-    //         for (uint256 i = 0; i < electionCounter; i++) {
-    //             address electionAddr = elections[i].contractAddress;
-    //             if (ElectionData(electionAddr).getCoreElectionData().isActive) {
-    //                 count++;
-    //             }
-    //         }
-
-    //         FullElectionInfo[] memory result = new FullElectionInfo[](count);
-    //         uint256 index;
-
-    //         for (uint256 i = 0; i < electionCounter; i++) {
-    //             address electionAddr = elections[i].contractAddress;
-    //             ElectionMetadata.ElectionWithCandidates memory data = ElectionData(
-    //                 electionAddr
-    //             ).getCoreElectionData();
-
-    //             if (data.isActive) {
-    //                 result[index] = FullElectionInfo({
-    //                     coreData: data,
-    //                     electionType: elections[i].electionType,
-    //                     contractAddress: electionAddr
-    //                 });
-    //                 index++;
-    //             }
-    //         }
-
-    //         return result;
-    //     }
-
-    //     function getElectionsByIds(uint256[] memory ids) external view returns (FullElectionInfo[] memory) {
-    //         FullElectionInfo[] memory temp = new FullElectionInfo[](ids.length);
-    //         uint256 count = 0;
-
-    //         for (uint256 i = 0; i < ids.length; i++) {
-    //             uint256 id = ids[i];
-    //             if (id >= electionCounter) {
-    //                 continue;
-    //             }
-
-    //             address electionAddr = elections[id].contractAddress;
-    //             ElectionMetadata.ElectionWithCandidates memory data = ElectionData(
-    //                 electionAddr
-    //             ).getCoreElectionData();
-
-    //             temp[count] = FullElectionInfo({
-    //                 coreData: data,
-    //                 electionType: elections[id].electionType,
-    //                 contractAddress: electionAddr
-    //             });
-    //             count++;
-    //         }
-
-    //         FullElectionInfo[] memory result = new FullElectionInfo[](count);
-    //         for (uint256 i = 0; i < count; i++) {
-    //             result[i] = temp[i];
-    //         }
-    //         return result;
-    //     }
 
     function _buildFullElectionInfo(
         uint256 id
@@ -294,11 +299,35 @@ constructor(address _publicElectionImpl, address _privateElectionImpl) {
             }
         }
 
-        // Shrink array
         FullElectionInfo[] memory result = new FullElectionInfo[](count);
         for (uint256 i = 0; i < count; i++) {
             result[i] = temp[i];
         }
+        return result;
+    }
+
+    function getMyElections()
+        external
+        view
+        returns (FullElectionInfo[] memory)
+    {
+        FullElectionInfo[] memory temp = new FullElectionInfo[](
+            electionCounter
+        );
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < electionCounter; i++) {
+            if (elections[i].creator == msg.sender) {
+                temp[count] = _buildFullElectionInfo(i);
+                count++;
+            }
+        }
+
+        FullElectionInfo[] memory result = new FullElectionInfo[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = temp[i];
+        }
+
         return result;
     }
 }
