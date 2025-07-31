@@ -4,17 +4,17 @@ const { ethers } = require("hardhat");
 const electionTypeLabels = ["Public", "Private"];
 
 describe("VotingFactory", function () {
-  let voting;
+  let voting, publicElectionImpl, privateElectionImpl;
   let owner, user1, user2;
 
   beforeEach(async () => {
     [owner, user1, user2] = await ethers.getSigners();
     // 1. Deploy logic implementations
     const PublicElection = await ethers.getContractFactory("PublicElection");
-    const publicElectionImpl = await PublicElection.deploy();
+    publicElectionImpl = await PublicElection.deploy();
 
     const PrivateElection = await ethers.getContractFactory("PrivateElection");
-    const privateElectionImpl = await PrivateElection.deploy();
+    privateElectionImpl = await PrivateElection.deploy();
 
     // 2. Deploy factory with implementation addresses
     const VotingFactory = await ethers.getContractFactory("VotingFactory");
@@ -356,10 +356,7 @@ describe("VotingFactory", function () {
         .find((parsed) => parsed?.name === "ElectionCreated");
       electionAddress = event?.args.contractAddress;
 
-      election = await ethers.getContractAt(
-        "PrivateElection",
-        electionAddress
-      );
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
     });
 
     async function getElectionWithCandidates() {
@@ -411,6 +408,421 @@ describe("VotingFactory", function () {
       for (let i = 0; i < 4; i++) {
         expect(electionData.candidates[i + 1].name).to.equal(expectedNames[i]);
       }
+    });
+  });
+
+  describe("startElection / endElection", function () {
+    it("Запускає і завершує голосування", async function () {
+      const tx = await voting.createPrivateElection(
+        "Тест",
+        ["Кандидат 1"],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
+      await election.startElection();
+      let all = await voting.getAllElections();
+      expect(all[0].coreData.isActive).to.equal(true);
+      expect(all[0].coreData.startedManually).to.equal(true);
+
+      await election.endElection();
+      all = await voting.getAllElections();
+      expect(all[0].coreData.isActive).to.equal(false);
+      expect(all[0].coreData.endedManually).to.equal(true);
+    });
+  });
+
+  describe("stop/start election", function () {
+    it("не дозволяє повторно запустити вибори після завершення", async function () {
+      const tx = await voting.createPrivateElection(
+        "Одноразові вибори",
+        ["Кандидат X"],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
+
+      await election.startElection();
+
+      await election.endElection();
+
+      await expect(election.startElection()).to.be.revertedWith(
+        "Election has been already manually ended"
+      );
+    });
+  });
+
+  describe("vote", function () {
+    let election;
+    beforeEach(async () => {
+      const tx = await voting.createPrivateElection(
+        "Vote Test",
+        ["Кандидат"],
+        0,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
+    });
+
+    it("Дозволяє голосування користувачу", async function () {
+      await election.connect(user1).vote(0);
+      const elections = await voting.getAllElections();
+      expect(elections[0].coreData.candidates[0].voteCount).to.equal(1);
+    });
+
+    it("Не дозволяє голосувати двічі", async function () {
+      await election.connect(user1).vote(0);
+      await expect(election.connect(user1).vote(0)).to.be.revertedWith(
+        "Already voted"
+      );
+    });
+
+    it("Не дозволяє голосувати неактивні вибори", async function () {
+      const tx = await voting.createPrivateElection(
+        "Інше",
+        ["Канд."],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      const election2 = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+      await expect(election2.connect(user1).vote(1)).to.be.revertedWith(
+        "Election is not active"
+      );
+    });
+
+    it("Завершує вибори, якщо досягнуто ліміту голосів", async function () {
+      const tx = await voting.createPrivateElection(
+        "Обмежене",
+        ["Кандидат 1"],
+        1,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      const election2 = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      await election2.connect(user1).vote(0);
+      const all = await voting.getAllElections();
+      expect(all[1].coreData.isActive).to.equal(false);
+      expect(all[1].coreData.endedManually).to.equal(true);
+    });
+  });
+
+  describe("getMyVote", function () {
+    it("Повертає правильний статус голосування", async function () {
+      const tx = await voting.createPrivateElection(
+        "Голосування",
+        ["Кандидат 1"],
+        0,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      const election = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      const voteBefore = await election.connect(user1).getMyVote();
+      expect(voteBefore.userVoted).to.equal(false);
+      expect(voteBefore.candidateId).to.equal(ethers.MaxUint256);
+      expect(voteBefore.candidateName).to.equal("");
+
+      await election.connect(user1).vote(0);
+
+      const voteAfter = await election.connect(user1).getMyVote();
+      expect(voteAfter.userVoted).to.equal(true);
+      expect(voteAfter.candidateId).to.equal(0);
+      expect(voteAfter.candidateName).to.equal("Кандидат 1");
+    });
+  });
+
+  describe("getResults", function () {
+    it("Повертає результати після завершення виборів", async function () {
+      const tx = await voting.createPrivateElection("Results", ["A"], 1, true);
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
+
+      await election.connect(user1).vote(0);
+
+      const results = await election.getResults();
+      expect(results[0].name).to.equal("A");
+      expect(results[0].voteCount).to.equal(1);
+    });
+
+    it("Не повертає результати до завершення", async function () {
+      const tx = await voting.createPrivateElection(
+        "Not ended",
+        ["X"],
+        0,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
+
+      await expect(election.getResults()).to.be.revertedWith(
+        "Election has not ended yet"
+      );
+    });
+  });
+
+  describe("voteWithSignature", function () {
+    let election, electionId;
+    let chainId, domain;
+    const domainName = "PrivateElection";
+    const domainVersion = "1";
+
+    const voteTypes = {
+      Vote: [
+        { name: "electionId", type: "uint256" },
+        { name: "candidateId", type: "uint256" },
+        { name: "voter", type: "address" },
+      ],
+    };
+
+    const authTypes = {
+      Auth: [
+        { name: "electionId", type: "uint256" },
+        { name: "voter", type: "address" },
+      ],
+    };
+
+    beforeEach(async () => {
+      const tx = await voting.createPrivateElection(
+        "Підписне голосування",
+        ["Кандидат 1"],
+        0,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await ethers.getContractAt("PrivateElection", electionAddress);
+      electionId = 0;
+
+      const { chainId: chain } = await ethers.provider.getNetwork();
+      chainId = chain;
+
+      domain = {
+        name: domainName,
+        version: domainVersion,
+        chainId,
+        verifyingContract: electionAddress,
+      };
+    });
+
+    it("Успішно голосує через підпис", async function () {
+      const candidateId = 0;
+      const voterAddress = user1.address;
+
+      const value = {
+        electionId: 0,
+        candidateId,
+        voter: voterAddress,
+      };
+
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId: 0,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      // Голосує через підпис
+      await election
+        .connect(user2)
+        .getFunction("voteWithSignature(uint256,address,bytes,bytes)")(
+        candidateId,
+        voterAddress,
+        voteSignature,
+        authSignature
+      );
+
+      const elections = await voting.getAllElections();
+      expect(elections[0].coreData.candidates[candidateId].voteCount).to.equal(
+        1
+      );
+    });
+
+    it("Не дозволяє голосувати двічі з підписом", async function () {
+      const candidateId = 0;
+      const voterAddress = user1.address;
+
+      const value = {
+        electionId,
+        candidateId,
+        voter: voterAddress,
+      };
+
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      await election
+        .connect(owner)
+        .getFunction("voteWithSignature(uint256,address,bytes,bytes)")(
+        candidateId,
+        voterAddress,
+        voteSignature,
+        authSignature
+      );
+
+      // Повторне використання того ж підпису
+      await expect(
+        election
+          .connect(owner)
+          .getFunction("voteWithSignature(uint256,address,bytes,bytes)")(
+          candidateId,
+          voterAddress,
+          voteSignature,
+          authSignature
+        )
+      ).to.be.revertedWith("Already voted");
+    });
+
+    it("Викидає помилку при фальшивому підписі виборця", async function () {
+      const candidateId = 0;
+      const voterAddress = user1.address;
+
+      const packedData = ethers.solidityPackedKeccak256(
+        ["uint256", "uint256", "address"],
+        [electionId, candidateId, voterAddress]
+      );
+
+      // user2 підписує повідомлення, але передаємо ніби це user1
+      const fakeVoteSignature = await user2.signMessage(
+        ethers.getBytes(packedData)
+      );
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      await expect(
+        election
+          .connect(owner)
+          .getFunction("voteWithSignature(uint256,address,bytes,bytes)")(
+          candidateId,
+          user1.address,
+          fakeVoteSignature,
+          authSignature
+        )
+      ).to.be.revertedWith("Invalid signature");
+    });
+
+    it("Викидає помилку при фальшивому підписі власника контракту", async function () {
+      const candidateId = 0;
+      const voterAddress = user1.address;
+
+      const value = {
+        electionId,
+        candidateId,
+        voter: voterAddress,
+      };
+
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId,
+        voter: voterAddress,
+      };
+
+      const fakeAuthSignature = await user2.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      await expect(
+        election
+          .connect(owner)
+          .getFunction("voteWithSignature(uint256,address,bytes,bytes)")(
+          candidateId,
+          user1.address,
+          voteSignature,
+          fakeAuthSignature
+        )
+      ).to.be.revertedWith("Not authorized by owner");
     });
   });
 });

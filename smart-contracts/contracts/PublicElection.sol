@@ -35,60 +35,19 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         __EIP712_init("PublicElection", "1");
     }
 
-    // constructor(
-    //     string memory _name,
-    //     string[] memory _candidateNames,
-    //     address _creator,
-    //     address _admin,
-    //     uint256 _electionId,
-    //     uint256 _voterLimit,
-    //     bool _startImmediately
-    // )
-    //     BaseElection(
-    //         _name,
-    //         _candidateNames,
-    //         _creator,
-    //         _admin,
-    //         _electionId,
-    //         _voterLimit,
-    //         _startImmediately
-    //     )
-    //     EIP712("PublicElection", "1")
-    // {}
-
     struct Vote {
         uint256 electionId;
         uint256 candidateId;
         address voter;
     }
 
-    // struct CandidateView {
-    //     uint256 id;
-    //     string name;
-    //     uint256 voteCount;
-    // }
-
-    // struct ElectionWithCandidates {
-    //     uint256 id;
-    //     string name;
-    //     uint256 startTime;
-    //     uint256 endTime;
-    //     address creator;
-    //     bool isActive;
-    //     bool startedManually;
-    //     bool endedManually;
-    //     uint256 candidateCount;
-    //     uint256 voterLimit;
-    //     CandidateView[] candidates;
-    // }
-
-    bytes32 private constant VOTE_TYPEHASH =
+    bytes32 public constant VOTE_TYPEHASH =
         keccak256("Vote(uint256 electionId,uint256 candidateId,address voter)");
-    bytes32 constant AUTH_TYPEHASH =
+    bytes32 public constant AUTH_TYPEHASH =
         keccak256("Auth(uint256 electionId,address voter)");
 
     // ------------------------
-    // 🗳 Voting Logic
+    // Voting Logic
     // ------------------------
 
     function _internalVote(
@@ -125,11 +84,10 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
     }
 
     function voteWithSignature(
-        //PublicElection
         uint256 _candidateId,
         address _voter,
         bytes memory voterSignature
-    ) external {
+    ) external virtual {
         Vote memory voteData = Vote({
             electionId: electionId,
             candidateId: _candidateId,
@@ -179,31 +137,6 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         return (userVoted, candidateId, candidateName);
     }
 
-    // function getELectionData() external view returns (bytes memory) {
-    //     CandidateView[] memory list = new CandidateView[](candidates.length);
-
-    //     for (uint256 i = 0; i < candidates.length; i++) {
-    //         Candidate storage c = candidates[i];
-    //         list[i] = CandidateView(c.id, c.name, c.voteCount);
-    //     }
-
-    //     ElectionWithCandidates memory metadata = ElectionWithCandidates({
-    //         id: electionId,
-    //         name: name,
-    //         creator: creator,
-    //         startTime: startTime,
-    //         endTime: endTime,
-    //         isActive: isActive,
-    //         startedManually: startedManually,
-    //         endedManually: endedManually,
-    //         candidateCount: candidates.length,
-    //         voterLimit: voterLimit,
-    //         candidates: list
-    //     });
-
-    //     return abi.encode(metadata);
-    // }
-
     function _getCandidates() internal view returns (Candidate[] memory) {
         Candidate[] memory result = new Candidate[](candidates.length);
         for (uint256 i = 0; i < candidates.length; i++) {
@@ -217,7 +150,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
             endedManually ||
                 (endTime > 0 && block.timestamp > endTime) ||
                 (voterLimit > 0 && voterCount >= voterLimit),
-            "Election not ended"
+            "Election has not ended yet"
         );
         return _getCandidates();
     }

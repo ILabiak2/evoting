@@ -25,33 +25,12 @@ abstract contract BaseElection {
         uint256 voteCount;
     }
 
-    // struct CandidateView {
-    //     uint256 id;
-    //     string name;
-    //     uint256 voteCount;
-    // }
-
-    // struct ElectionWithCandidates {
-    //     uint256 id;
-    //     string name;
-    //     uint256 startTime;
-    //     uint256 endTime;
-    //     address creator;
-    //     bool isActive;
-    //     bool startedManually;
-    //     bool endedManually;
-    //     uint256 candidateCount;
-    //     uint256 voterLimit;
-    //     CandidateView[] candidates;
-    // }
-
     Candidate[] public candidates;
     address[] public electionVoters;
     mapping(address => bool) public hasVoted;
     mapping(address => uint256) public votedCandidate;
     mapping(bytes32 => bool) internal candidateNameExists;
 
-    // event ElectionCreated(uint256 indexed electionId, string name);
     event ElectionStarted(uint256 indexed electionId);
     event ElectionEnded(uint256 indexed electionId);
     event VoteCast(
@@ -81,36 +60,6 @@ abstract contract BaseElection {
         require(isElectionActive(), "Election is not active");
         _;
     }
-
-    // constructor(
-    //     string memory _name,
-    //     string[] memory _candidateNames,
-    //     address _creator,
-    //     address _admin,
-    //     uint256 _electionId,
-    //     uint256 _voterLimit,
-    //     bool _startImmediately
-    // ) {
-    //     name = _name;
-    //     admin = _admin;
-    //     creator = _creator;
-    //     electionId = _electionId;
-    //     voterLimit = _voterLimit;
-
-    //     if (_startImmediately) {
-    //         startTime = block.timestamp;
-    //         isActive = true;
-    //         startedManually = false;
-    //     } else {
-    //         startTime = 0;
-    //         isActive = false;
-    //         startedManually = true;
-    //     }
-
-    //     endTime = 0; // Not set at creation
-
-    //     _addCandidates(_candidateNames);
-    // }
 
     function __BaseElection_init(
         string memory _name,
@@ -177,7 +126,7 @@ abstract contract BaseElection {
         if (startedManually) {
             return block.timestamp <= endTime;
         }
-        return block.timestamp >= startTime && block.timestamp <= endTime;
+        return isActive;
     }
 
     function startElection() external onlyCreatorOrAdmin(electionId) {
@@ -231,11 +180,6 @@ abstract contract BaseElection {
                 candidates: list
             });
     }
-
-    // function getResults() external view returns (Candidate[] memory) {
-    //     require(!isActive, "Election has not ended");
-    //     return candidates;
-    // }
 
     function _internalVote(
         uint256 _candidateId,

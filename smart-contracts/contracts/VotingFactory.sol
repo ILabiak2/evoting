@@ -123,14 +123,15 @@ contract VotingFactory is EIP712 {
         uint256 _voterLimit,
         bool _startImmediately
     ) external returns (address) {
-        return _createElection(
-            name,
-            candidateNames,
-            _voterLimit,
-            _startImmediately,
-            msg.sender,
-            ElectionType.Public
-        );
+        return
+            _createElection(
+                name,
+                candidateNames,
+                _voterLimit,
+                _startImmediately,
+                msg.sender,
+                ElectionType.Public
+            );
     }
 
     function createPublicElectionWithSignature(
