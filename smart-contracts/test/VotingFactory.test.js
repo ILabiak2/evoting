@@ -3,20 +3,33 @@ const { ethers } = require("hardhat");
 
 const electionTypeLabels = ["Public", "Private"];
 
+const voteTypes = {
+  Vote: [
+    { name: "electionId", type: "uint256" },
+    { name: "candidateId", type: "uint256" },
+    { name: "voter", type: "address" },
+  ],
+};
+
+const authTypes = {
+  Auth: [
+    { name: "electionId", type: "uint256" },
+    { name: "voter", type: "address" },
+  ],
+};
+
 describe("VotingFactory", function () {
   let voting, publicElectionImpl, privateElectionImpl;
   let owner, user1, user2;
 
   beforeEach(async () => {
     [owner, user1, user2] = await ethers.getSigners();
-    // 1. Deploy logic implementations
     const PublicElection = await ethers.getContractFactory("PublicElection");
     publicElectionImpl = await PublicElection.deploy();
 
     const PrivateElection = await ethers.getContractFactory("PrivateElection");
     privateElectionImpl = await PrivateElection.deploy();
 
-    // 2. Deploy factory with implementation addresses
     const VotingFactory = await ethers.getContractFactory("VotingFactory");
     voting = await VotingFactory.deploy(
       publicElectionImpl.target,
@@ -98,7 +111,6 @@ describe("VotingFactory", function () {
 
       ids.unshift(123123);
       elections = await voting.getElectionsByIds(ids);
-      // console.log(elections);
 
       expect(elections.length).to.equal(4);
       expect(elections[0].coreData.name).to.equal(`Election 0`);
@@ -342,7 +354,6 @@ describe("VotingFactory", function () {
     const candidateNames = ["Alice", "Bob", "Charlie"];
 
     beforeEach(async function () {
-      // await voting.createPublicElection(electionName, ["First"], 0, true);
       const tx = await voting.createPublicElection(
         electionName,
         ["First"],
@@ -356,7 +367,7 @@ describe("VotingFactory", function () {
         .find((parsed) => parsed?.name === "ElectionCreated");
       electionAddress = event?.args.contractAddress;
 
-      election = await ethers.getContractAt("PrivateElection", electionAddress);
+      election = await ethers.getContractAt("PublicElection", electionAddress);
     });
 
     async function getElectionWithCandidates() {
@@ -469,7 +480,7 @@ describe("VotingFactory", function () {
   describe("vote", function () {
     let election;
     beforeEach(async () => {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createPublicElection(
         "Vote Test",
         ["Кандидат"],
         0,
@@ -482,7 +493,7 @@ describe("VotingFactory", function () {
         .find((parsed) => parsed?.name === "ElectionCreated");
       electionAddress = event?.args.contractAddress;
 
-      election = await ethers.getContractAt("PrivateElection", electionAddress);
+      election = await ethers.getContractAt("PublicElection", electionAddress);
     });
 
     it("Дозволяє голосування користувачу", async function () {
@@ -499,11 +510,29 @@ describe("VotingFactory", function () {
     });
 
     it("Не дозволяє голосувати неактивні вибори", async function () {
+      const tx = await voting.createPublicElection("Інше", ["Канд."], 0, false);
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      const election2 = await ethers.getContractAt(
+        "PublicElection",
+        electionAddress
+      );
+      await expect(election2.connect(user1).vote(1)).to.be.revertedWith(
+        "Election is not active"
+      );
+    });
+
+    it("Голосування у приватному голосуванні", async function () {
       const tx = await voting.createPrivateElection(
-        "Інше",
-        ["Канд."],
+        "Приватне голосування",
+        ["Кандидат 1"],
         0,
-        false
+        true
       );
       const receipt = await tx.wait();
 
@@ -516,13 +545,37 @@ describe("VotingFactory", function () {
         "PrivateElection",
         electionAddress
       );
-      await expect(election2.connect(user1).vote(1)).to.be.revertedWith(
-        "Election is not active"
+      await expect(election2.connect(user1).vote(0)).to.be.revertedWith(
+        "You need to use authSignature"
+      );
+
+      const { chainId: chain } = await ethers.provider.getNetwork();
+
+      domain = {
+        name: "PrivateElection",
+        version: "1",
+        chainId: chain,
+        verifyingContract: electionAddress,
+      };
+
+      const authValue = {
+        electionId: 1,
+        voter: user1.address,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      await election2.connect(user1).getFunction("vote(uint256,bytes)")(
+        0,
+        authSignature
       );
     });
 
     it("Завершує вибори, якщо досягнуто ліміту голосів", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createPublicElection(
         "Обмежене",
         ["Кандидат 1"],
         1,
@@ -536,7 +589,7 @@ describe("VotingFactory", function () {
       electionAddress = event?.args.contractAddress;
 
       const election2 = await ethers.getContractAt(
-        "PrivateElection",
+        "PublicElection",
         electionAddress
       );
 
@@ -549,7 +602,7 @@ describe("VotingFactory", function () {
 
   describe("getMyVote", function () {
     it("Повертає правильний статус голосування", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createPublicElection(
         "Голосування",
         ["Кандидат 1"],
         0,
@@ -563,7 +616,7 @@ describe("VotingFactory", function () {
       electionAddress = event?.args.contractAddress;
 
       const election = await ethers.getContractAt(
-        "PrivateElection",
+        "PublicElection",
         electionAddress
       );
 
@@ -583,7 +636,7 @@ describe("VotingFactory", function () {
 
   describe("getResults", function () {
     it("Повертає результати після завершення виборів", async function () {
-      const tx = await voting.createPrivateElection("Results", ["A"], 1, true);
+      const tx = await voting.createPublicElection("Results", ["A"], 1, true);
       const receipt = await tx.wait();
 
       const event = receipt.logs
@@ -591,7 +644,7 @@ describe("VotingFactory", function () {
         .find((parsed) => parsed?.name === "ElectionCreated");
       electionAddress = event?.args.contractAddress;
 
-      election = await ethers.getContractAt("PrivateElection", electionAddress);
+      election = await ethers.getContractAt("PublicElection", electionAddress);
 
       await election.connect(user1).vote(0);
 
@@ -601,12 +654,7 @@ describe("VotingFactory", function () {
     });
 
     it("Не повертає результати до завершення", async function () {
-      const tx = await voting.createPrivateElection(
-        "Not ended",
-        ["X"],
-        0,
-        true
-      );
+      const tx = await voting.createPublicElection("Not ended", ["X"], 0, true);
       const receipt = await tx.wait();
 
       const event = receipt.logs
@@ -614,7 +662,7 @@ describe("VotingFactory", function () {
         .find((parsed) => parsed?.name === "ElectionCreated");
       electionAddress = event?.args.contractAddress;
 
-      election = await ethers.getContractAt("PrivateElection", electionAddress);
+      election = await ethers.getContractAt("PublicElection", electionAddress);
 
       await expect(election.getResults()).to.be.revertedWith(
         "Election has not ended yet"
@@ -627,21 +675,6 @@ describe("VotingFactory", function () {
     let chainId, domain;
     const domainName = "PrivateElection";
     const domainVersion = "1";
-
-    const voteTypes = {
-      Vote: [
-        { name: "electionId", type: "uint256" },
-        { name: "candidateId", type: "uint256" },
-        { name: "voter", type: "address" },
-      ],
-    };
-
-    const authTypes = {
-      Auth: [
-        { name: "electionId", type: "uint256" },
-        { name: "voter", type: "address" },
-      ],
-    };
 
     beforeEach(async () => {
       const tx = await voting.createPrivateElection(

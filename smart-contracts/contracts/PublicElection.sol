@@ -79,7 +79,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         emit VoteCast(electionId, _candidateId, _voter);
     }
 
-    function vote(uint256 candidateId) external electionOngoing {
+    function vote(uint256 candidateId) external virtual electionOngoing {
         _internalVote(candidateId, msg.sender);
     }
 

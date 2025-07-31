@@ -48,6 +48,27 @@ contract PrivateElection is PublicElection {
         // 👇 Add any private-election-specific logic here if needed
     }
 
+    function vote(
+        uint256 candidateId
+    ) external override electionOngoing {
+        revert("You need to use authSignature");
+    }
+
+    function vote(
+        uint256 candidateId,
+        bytes memory authSignature
+    ) external electionOngoing {
+        bytes32 authHash = keccak256(
+            abi.encode(AUTH_TYPEHASH, electionId, msg.sender)
+        );
+
+        bytes32 authDigest = _hashTypedDataV4(authHash);
+        address authSigner = ECDSA.recover(authDigest, authSignature);
+        require(authSigner == creator, "Not authorized by owner");
+
+        _internalVote(candidateId, msg.sender);
+    }
+
     function voteWithSignature(
         uint256 _candidateId,
         address _voter,
@@ -82,16 +103,13 @@ contract PrivateElection is PublicElection {
         address signer = ECDSA.recover(digest, voterSignature);
         require(signer == _voter, "Invalid signature");
 
-                bytes32 authHash = keccak256(
+        bytes32 authHash = keccak256(
             abi.encode(AUTH_TYPEHASH, electionId, _voter)
         );
 
         bytes32 authDigest = _hashTypedDataV4(authHash);
         address authSigner = ECDSA.recover(authDigest, authSignature);
-        require(
-            authSigner == creator,
-            "Not authorized by owner"
-        );
+        require(authSigner == creator, "Not authorized by owner");
 
         _internalVote(_candidateId, _voter);
     }
