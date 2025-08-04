@@ -1,22 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
-import { VotingSystem } from './abi/VotingSystem';
-import * as VotingSystemABI from './abi/VotingSystem.json';
+import { VotingFactory } from './abi/VotingFactory';
+import * as VotingFactoryABI from './abi/VotingFactory.json';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
+import { CreateElectionParams } from './types/election.interface';
+import { ElectionType } from './types/election-type.enum';
 
 declare global {
   interface BigInt {
-      toJSON(): Number;
+    toJSON(): Number;
   }
 }
 
-BigInt.prototype.toJSON = function () { return Number(this) }
+BigInt.prototype.toJSON = function () {
+  return Number(this);
+};
 
 @Injectable()
 export class BlockchainService {
   // private readonly azureKeyVaultService: AzureKeyVaultService;
   private provider: ethers.JsonRpcProvider;
-  private contract: VotingSystem;
+  private contract: VotingFactory;
   private adminWallet: ethers.Wallet;
   // private contractWithSigner: ethers.Contract;
 
@@ -32,9 +36,9 @@ export class BlockchainService {
 
     this.contract = new ethers.Contract(
       contractAddress,
-      VotingSystemABI.abi as any,
+      VotingFactoryABI.abi as any,
       this.provider,
-    ) as unknown as VotingSystem;
+    ) as unknown as VotingFactory;
     // this.contractWithSigner = this.contract.connect(this.adminWallet);
   }
 
@@ -42,7 +46,7 @@ export class BlockchainService {
     const network = await this.provider.getNetwork();
 
     return {
-      name: 'VotingSystem',
+      name: 'VotingFactory',
       version: '1',
       chainId: network.chainId,
       verifyingContract: this.contract.target.toString(),
@@ -54,19 +58,20 @@ export class BlockchainService {
     return result;
   }
 
-  async createElectionWithSignature(
-    userId: string,
-    name: string,
-    startImmediately: boolean,
-    voterLimit: number,
-    candidateNames: string[],
-  ) {
-    // console.log(userId);
+  async createElectionWithSignature(params: CreateElectionParams) {
+    const {
+      userId,
+      type,
+      name,
+      startImmediately,
+      voterLimit = 0,
+      candidateNames,
+    } = params;
     const vaultKeyName = `wallet-key-${userId}`;
     const privateKey =
       await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
     const userWallet = new ethers.Wallet(privateKey);
-
+    const contractWithAdminSigner = this.contract.connect(this.adminWallet);
     const domain = await this.getDomain();
 
     const types = {
@@ -87,22 +92,41 @@ export class BlockchainService {
 
     const signature = await userWallet.signTypedData(domain, types, value);
 
-    const contractWithAdminSigner = this.contract.connect(this.adminWallet);
+    switch (type) {
+      case ElectionType.PUBLIC_SINGLE_CHOICE:
+        try {
+          const tx =
+            await contractWithAdminSigner.createPublicElectionWithSignature(
+              name,
+              startImmediately,
+              voterLimit,
+              userWallet.address,
+              candidateNames,
+              signature,
+            );
 
-    try {
-      const tx = await contractWithAdminSigner.createElectionWithSignature(
-        name,
-        startImmediately,
-        voterLimit,
-        userWallet.address,
-        candidateNames,
-        signature,
-      );
+          return { txHash: tx.hash };
+        } catch (error) {
+          console.error('Election creation failed:', error);
+          throw new Error('Failed to create election on-chain');
+        }
+      case ElectionType.PRIVATE_SINGLE_CHOICE:
+        try {
+          const tx =
+            await contractWithAdminSigner.createPrivateElectionWithSignature(
+              name,
+              startImmediately,
+              voterLimit,
+              userWallet.address,
+              candidateNames,
+              signature,
+            );
 
-      return { txHash: tx.hash };
-    } catch (error) {
-      console.error('Election creation failed:', error);
-      throw new Error('Failed to create election on-chain');
+          return { txHash: tx.hash };
+        } catch (error) {
+          console.error('Election creation failed:', error);
+          throw new Error('Failed to create election on-chain');
+        }
     }
   }
 
@@ -125,7 +149,7 @@ export class BlockchainService {
 
     return {
       confirmed: true,
-      electionId: Number(event.args?.electionId),
+      electionId: Number(event.args?.id),
     };
   }
 
@@ -150,11 +174,11 @@ export class BlockchainService {
         startedManually,
         endedManually,
         candidateCount,
-        // Possibly more fields here...
         ,
-        candidatesRaw
+        // Possibly more fields here...
+        candidatesRaw,
       ] = election;
-  
+
       const candidates = candidatesRaw.map(([id, name, votes]: any[]) => ({
         id,
         name,
@@ -162,7 +186,7 @@ export class BlockchainService {
       }));
 
       const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
-  
+
       return {
         id,
         name,
@@ -173,10 +197,9 @@ export class BlockchainService {
         endedManually,
         candidateCount,
         candidates,
-        totalVotes
+        totalVotes,
       };
     });
-  
 
     return elections;
   }

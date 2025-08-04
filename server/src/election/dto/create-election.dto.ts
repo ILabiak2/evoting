@@ -4,19 +4,24 @@ import {
   IsString,
   IsIn,
   MinLength,
-  Matches,
+  IsEnum,
   IsBoolean,
   IsArray,
   IsNumber,
   Min,
-  Max
+  Max,
+  isEnum
 } from 'class-validator';
+import { ElectionType } from '@/blockchain/types/election-type.enum';
 
 export class CreateElectionDto {
   @IsString()
   @MinLength(3)
   @MaxLength(30)
   name: string;
+
+  @IsEnum(ElectionType)
+  type: ElectionType;
 
   @IsBoolean()
   startImmediately: boolean;

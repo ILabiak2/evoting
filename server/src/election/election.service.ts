@@ -8,8 +8,8 @@ export class ElectionService {
   constructor(private readonly blockchain: BlockchainService) {}
 
   create(createElectionDto: CreateElectionDto, userId: string) {
-    const {name, voterLimit, startImmediately, candidates} = createElectionDto
-    return this.blockchain.createElectionWithSignature(userId, name,startImmediately,voterLimit, candidates)
+    const {name, voterLimit, startImmediately, candidates, type} = createElectionDto
+    return this.blockchain.createElectionWithSignature({userId, type, name,startImmediately,voterLimit, candidateNames: candidates})
   }
 
   async checkStatus(txHash: string) {
