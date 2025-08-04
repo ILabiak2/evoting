@@ -164,41 +164,53 @@ export class BlockchainService {
 
     const electionsRaw = await contractWithSigner.getMyElections();
 
-    const elections = electionsRaw.map((election: any[]) => {
-      const [
+    const elections = electionsRaw.map((election: any) => {
+      const {
+        coreData,
+        electionType,
+        contractAddress,
+      } = election;
+
+      const {
         id,
         name,
         startTime,
         endTime,
+        creator,
         isActive,
         startedManually,
         endedManually,
         candidateCount,
-        ,
-        // Possibly more fields here...
-        candidatesRaw,
-      ] = election;
+        voterLimit,
+        candidates: candidatesRaw,
+      } = coreData;
 
-      const candidates = candidatesRaw.map(([id, name, votes]: any[]) => ({
-        id,
-        name,
-        votes: Number(votes),
+      const candidates = candidatesRaw.map((candidate: any) => ({
+        id: candidate.id,
+        name: candidate.name,
+        votes: Number(candidate.voteCount),
       }));
 
       const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
-
+    
       return {
         id,
         name,
-        startTime,
-        endTime,
+        startTime: Number(startTime),
+        endTime: Number(endTime),
+        creator,
         isActive,
         startedManually,
         endedManually,
-        candidateCount,
+        candidateCount: Number(candidateCount),
+        voterLimit: Number(voterLimit),
+        electionType,
+        contractAddress,
         candidates,
-        totalVotes,
+        totalVotes
       };
+
+
     });
 
     return elections;

@@ -16,5 +16,7 @@ export const useUserElections = () => {
 
       return res.json();
     },
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 };
