@@ -4,7 +4,7 @@ import { VotingFactory } from './abi/VotingFactory';
 import * as VotingFactoryABI from './abi/VotingFactory.json';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { CreateElectionParams } from './types/election.interface';
-import { ElectionType } from './types/election-type.enum';
+import { ElectionType, ElectionTypeFromNumber } from './types/election-type.enum';
 
 declare global {
   interface BigInt {
@@ -204,7 +204,7 @@ export class BlockchainService {
         endedManually,
         candidateCount: Number(candidateCount),
         voterLimit: Number(voterLimit),
-        electionType,
+        electionType: ElectionTypeFromNumber[electionType],
         contractAddress,
         candidates,
         totalVotes
