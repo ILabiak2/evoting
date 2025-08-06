@@ -38,11 +38,12 @@ async function main() {
   console.log("VotingFactory deployed at:", factoryAddr);
 
   // Delay to ensure block propagation (especially on testnets)
-  await new Promise((res) => setTimeout(res, 30000));
+  
+  // await new Promise((res) => setTimeout(res, 30000));
 
-  await verifyContract(publicAddr, ['--force']);
-  await verifyContract(privateAddr, ['--force']);
-  await verifyContract(factoryAddr, [publicAddr, privateAddr, '--force']);
+  // await verifyContract(publicAddr, ['--force']);
+  // await verifyContract(privateAddr, ['--force']);
+  // await verifyContract(factoryAddr, [publicAddr, privateAddr, '--force']);
 
   // try {
   //   console.log("Verifying PublicElection...");

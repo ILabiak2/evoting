@@ -8,7 +8,7 @@ import { Logger } from '@nestjs/common';
 @Injectable()
 export class ElectionService {
   private readonly logger = new Logger(ElectionService.name);
-  
+
   constructor(
     private readonly blockchain: BlockchainService,
     private prisma: PrismaService,
@@ -49,7 +49,7 @@ export class ElectionService {
       });
       this.logger.log(`Election metadata added for election ${electionId}`);
     } catch (error) {
-      console.error(error);
+      this.logger.error(error);
     }
   }
 

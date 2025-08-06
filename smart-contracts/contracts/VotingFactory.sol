@@ -222,8 +222,19 @@ contract VotingFactory is EIP712 {
     function getElection(
         uint256 id
     ) external view returns (FullElectionInfo memory) {
-        require(id < electionCounter, "Invalid election ID");
+        require(id < electionCounter || id >= 0, "Invalid election ID");
         return _buildFullElectionInfo(id);
+    }
+
+    function getElectionByAddress(
+        address addr
+    ) external view returns (FullElectionInfo memory) {
+        for (uint256 i = 0; i < electionCounter; i++) {
+            if (elections[i].contractAddress == addr) {
+                return _buildFullElectionInfo(i);
+            }
+        }
+        revert("Election not found");
     }
 
     function _buildFullElectionInfo(

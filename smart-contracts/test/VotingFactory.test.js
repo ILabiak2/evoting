@@ -119,6 +119,31 @@ describe("VotingFactory", function () {
       expect(elections[3].coreData.name).to.equal(`Election 9`);
     });
 
+    it("Отримання інформації про вибрані голосування за адресою]", async () => {
+      const tx = await voting.createPublicElection(
+        'Election',
+        ["Candidate 1"],
+        0,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+
+      election = await voting.getElectionByAddress(electionAddress);
+
+      expect(election.coreData.id).to.equal(0);
+      expect(election.electionType).to.equal(0);
+      expect(election.coreData.isActive).to.equal(true);
+      expect(election.coreData.name).to.equal('Election');
+      expect(election.coreData.candidateCount).to.equal(1);
+      expect(election.coreData.candidates[0].name).to.equal("Candidate 1");
+      expect(election.contractAddress).to.equal(electionAddress);
+    });
+
     it("Отримання інформації про голосування користувача", async () => {
       let elections = await voting.connect(user1).getMyElections();
       expect(elections.length).to.equal(0);

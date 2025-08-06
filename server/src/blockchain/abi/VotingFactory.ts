@@ -111,6 +111,7 @@ export interface VotingFactoryInterface extends Interface {
       | "getActiveElections"
       | "getAllElections"
       | "getElection"
+      | "getElectionByAddress"
       | "getElectionsByIds"
       | "getMyElections"
       | "privateElectionImpl"
@@ -169,6 +170,10 @@ export interface VotingFactoryInterface extends Interface {
   encodeFunctionData(
     functionFragment: "getElection",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getElectionByAddress",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getElectionsByIds",
@@ -231,6 +236,10 @@ export interface VotingFactoryInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "getElection",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getElectionByAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -435,6 +444,12 @@ export interface VotingFactory extends BaseContract {
     "view"
   >;
 
+  getElectionByAddress: TypedContractMethod<
+    [addr: AddressLike],
+    [VotingFactory.FullElectionInfoStructOutput],
+    "view"
+  >;
+
   getElectionsByIds: TypedContractMethod<
     [ids: BigNumberish[]],
     [VotingFactory.FullElectionInfoStructOutput[]],
@@ -568,6 +583,13 @@ export interface VotingFactory extends BaseContract {
     nameOrSignature: "getElection"
   ): TypedContractMethod<
     [id: BigNumberish],
+    [VotingFactory.FullElectionInfoStructOutput],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getElectionByAddress"
+  ): TypedContractMethod<
+    [addr: AddressLike],
     [VotingFactory.FullElectionInfoStructOutput],
     "view"
   >;
