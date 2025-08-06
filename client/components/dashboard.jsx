@@ -5,9 +5,16 @@ import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { useUserElections } from "@/lib/hooks/useUserElections";
 import { Input } from "@/components/ui/input";
 
+const ElectionType = {
+  public_single_choice: "Public (Single Choice)",
+  private_single_choice: "Private (Single Choice",
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: elections, isLoading, error } = useUserElections();
+  // const [elections, setElections] = useState([]);
+  // const [isLoading, setIsLoading] = useState(true);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -66,6 +73,7 @@ export default function Dashboard() {
                     isActive={election.isActive}
                     votes={election.totalVotes}
                     userRole={user?.role}
+                    electionType={ElectionType[election.electionType]}
                   />
                 ))}
               </ul>
@@ -113,7 +121,14 @@ export default function Dashboard() {
                 )}
               </>
             )
-          ) : null}
+          ) : (
+            <div className="flex flex-col justify-center items-center h-full w-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mb-4"></div>
+              <p className="text-2xl text-center font-bold mb-20">
+                Loading elections...
+              </p>
+            </div>
+          )}
           {/* <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
               <ElectionInfo title={"Election 2"} votes={1} />
               <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
@@ -130,7 +145,14 @@ export default function Dashboard() {
   );
 }
 
-const ElectionInfo = ({ area, isActive, title, votes, userRole }) => {
+const ElectionInfo = ({
+  area,
+  isActive,
+  title,
+  votes,
+  userRole,
+  electionType,
+}) => {
   return (
     <li className={`min-h-[14rem] list-none ${area}`}>
       <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
@@ -166,9 +188,16 @@ const ElectionInfo = ({ area, isActive, title, votes, userRole }) => {
               </div>
 
               <div className="flex justify-between">
-                <h3 className="-tracking-4 font-sans text-center text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                  Votes: {votes}
-                </h3>
+                {userRole === "user" ? (
+                  <h3 className="-tracking-4 font-sans text-left text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
+                    Election type: {electionType}
+                  </h3>
+                ) : (
+                  <h3 className="-tracking-4 font-sans text-center text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
+                    Votes: {votes}
+                  </h3>
+                )}
+
                 <button className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
                   {userRole === "creator"
                     ? "Manage"

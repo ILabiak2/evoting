@@ -221,9 +221,9 @@ contract VotingFactory is EIP712 {
 
     function getElection(
         uint256 id
-    ) external view returns (ElectionInfo memory) {
+    ) external view returns (FullElectionInfo memory) {
         require(id < electionCounter, "Invalid election ID");
-        return elections[id];
+        return _buildFullElectionInfo(id);
     }
 
     function _buildFullElectionInfo(

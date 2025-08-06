@@ -93,25 +93,6 @@ export declare namespace VotingFactory {
     electionType: bigint;
     contractAddress: string;
   };
-
-  export type ElectionInfoStruct = {
-    contractAddress: AddressLike;
-    electionType: BigNumberish;
-    name: string;
-    creator: AddressLike;
-  };
-
-  export type ElectionInfoStructOutput = [
-    contractAddress: string,
-    electionType: bigint,
-    name: string,
-    creator: string
-  ] & {
-    contractAddress: string;
-    electionType: bigint;
-    name: string;
-    creator: string;
-  };
 }
 
 export interface VotingFactoryInterface extends Interface {
@@ -450,7 +431,7 @@ export interface VotingFactory extends BaseContract {
 
   getElection: TypedContractMethod<
     [id: BigNumberish],
-    [VotingFactory.ElectionInfoStructOutput],
+    [VotingFactory.FullElectionInfoStructOutput],
     "view"
   >;
 
@@ -587,7 +568,7 @@ export interface VotingFactory extends BaseContract {
     nameOrSignature: "getElection"
   ): TypedContractMethod<
     [id: BigNumberish],
-    [VotingFactory.ElectionInfoStructOutput],
+    [VotingFactory.FullElectionInfoStructOutput],
     "view"
   >;
   getFunction(

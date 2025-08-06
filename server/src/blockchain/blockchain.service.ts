@@ -204,7 +204,7 @@ export class BlockchainService {
         endedManually,
         candidateCount: Number(candidateCount),
         voterLimit: Number(voterLimit),
-        electionType: ElectionTypeFromNumber[electionType],
+        electionType: ElectionTypeFromNumber[Number(electionType)],
         contractAddress,
         candidates,
         totalVotes
@@ -216,7 +216,19 @@ export class BlockchainService {
     return elections;
   }
 
-  // If you need to send transactions:
+  async getElectionMetadata(electionId: number) {
+    const election = await this.contract.getElection(electionId);
+    const {name, creator} = election.coreData
+    const electionTypeIndex = Number(election.electionType);
+    return {          
+      name: name,
+      election_address: election.contractAddress,
+      factory_address: process.env.CONTRACT_ADDRESS,
+      election_type: ElectionTypeFromNumber[electionTypeIndex],
+      creator: creator,
+    };
+  }
+
   async writeSomething() {
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, this.provider);
     const contractWithSigner = this.contract.connect(wallet);

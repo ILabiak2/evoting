@@ -58,45 +58,46 @@ enum ElectionType {
 }
 
 model elections_metadata {
-  id              Int          @id
-  electionAddress String       @unique
-  factoryAddress  String
-  name            String?
-  creator         String?
-  electionType    ElectionType
-  createdAt       DateTime     @default(now())
+  id               Int          @id @default(autoincrement())
+  contract_id      Int
+  election_address String       @unique
+  factory_address  String
+  name             String?
+  creator          String?
+  election_type    ElectionType
+  created_at       DateTime     @default(now())
 
-  invites       invites[]
-  userElections user_elections[]
+  invites        invites[]
+  user_elections user_elections[]
 
-  @@index([electionAddress])
+  @@index([election_address])
 }
 
 model invites {
-  id        String    @id @default(uuid())
-  code      String    @unique
-  isUsed    Boolean   @default(false)
-  isExpired Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  usedAt    DateTime?
+  id         String    @id @default(uuid())
+  code       String    @unique
+  is_used    Boolean   @default(false)
+  is_expired Boolean   @default(false)
+  created_at DateTime  @default(now())
+  used_at    DateTime?
 
-  usedById String?    @db.Uuid 
-  usedBy   users?  @relation("UsedInvites", fields: [usedById], references: [id])
+  used_by_id String? @db.Uuid
+  used_by    users?  @relation("UsedInvites", fields: [used_by_id], references: [id])
 
-  electionId   Int
-  electionMeta elections_metadata @relation(fields: [electionId], references: [id])
+  election_id   Int
+  election_meta elections_metadata @relation(fields: [election_id], references: [id])
 
-  @@index([electionId])
+  @@index([election_id])
 }
 
 model user_elections {
-  id           String             @id @default(uuid())
-  user_id      String             @db.Uuid 
-  electionId   Int
-  user         users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  electionMeta elections_metadata @relation(fields: [electionId], references: [id])
+  id            Int                @id @default(autoincrement())
+  user_id       String             @db.Uuid
+  election_id   Int
+  user          users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  election_meta elections_metadata @relation(fields: [election_id], references: [id])
 
-  @@unique([user_id, electionId])
+  @@unique([user_id, election_id])
   @@index([user_id])
-  @@index([electionId])
+  @@index([election_id])
 }
