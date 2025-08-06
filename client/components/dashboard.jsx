@@ -62,7 +62,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-        <div className="flex gap-2 flex-1 overflow-y-auto">
+        <div className="flex gap-2 flex-1 overflow-y-auto items-start">
           {!isLoading ? (
             elections?.length > 0 ? (
               <ul className="w-full grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -138,7 +138,6 @@ export default function Dashboard() {
               <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
               <ElectionInfo title={"Election 2"} votes={1} /> */}
 
-          {/* )} */}
         </div>
       </div>
     </div>
@@ -154,7 +153,7 @@ const ElectionInfo = ({
   electionType,
 }) => {
   return (
-    <li className={`min-h-[14rem] list-none ${area}`}>
+    <li className={`list-none min-h-[14rem] ${area}`}>
       <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
         <GlowingEffect
           blur={0}
@@ -165,7 +164,7 @@ const ElectionInfo = ({
           proximity={64}
           inactiveZone={0.01}
         />
-        <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+        <div className="border-0.75 h-full relative flex flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
           <div className="relative flex flex-1 flex-col justify-between gap-3">
             <div className="space-y-3 flex flex-col justify-between h-full">
               <div className="flex justify-between">
