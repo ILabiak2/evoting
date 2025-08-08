@@ -53,6 +53,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         uint256 _candidateId,
         address _voter
     ) internal override {
+        require(_voter != creator, "Creator cannot vote");
         require(isActive && !endedManually, "Election not active");
         require(!hasVoted[_voter], "Already voted");
         require(_candidateId < candidates.length, "Invalid candidate");
@@ -63,7 +64,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
 
         candidates[_candidateId].voteCount++;
         hasVoted[_voter] = true;
-        votedCandidate[_voter] = _candidateId;
+        votedCandidates[_voter].push(_candidateId);
         voterCount++;
         electionVoters.push(_voter);
 
@@ -126,7 +127,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         userVoted = hasVoted[msg.sender];
 
         if (userVoted) {
-            candidateId = votedCandidate[msg.sender];
+            candidateId = votedCandidates[msg.sender][0];
             candidateName = candidates[candidateId].name;
         } else {
             candidateId = type(uint256).max; // Спеціальне значення "не проголосував"

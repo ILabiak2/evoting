@@ -67,11 +67,11 @@ export class ElectionService {
     return this.blockchain.getUserElections(userId);
   }
 
-  findAll() {
-    return `This action returns all election`;
+  getElectionData(address: string) {
+    return this.blockchain.getElectionData(address);
   }
 
-  getElectionData(id: number) {
-    return `This action returns a #${id} election`;
+  findAll() {
+    return `This action returns all election`;
   }
 }

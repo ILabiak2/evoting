@@ -8,4 +8,6 @@ interface ElectionData {
         external
         view
         returns (ElectionMetadata.ElectionWithCandidates memory);
+
+    function getVotedCandidateIds(address user) external view returns (uint256[] memory);
 }

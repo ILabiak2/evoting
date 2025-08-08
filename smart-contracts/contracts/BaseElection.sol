@@ -28,7 +28,7 @@ abstract contract BaseElection {
     Candidate[] public candidates;
     address[] public electionVoters;
     mapping(address => bool) public hasVoted;
-    mapping(address => uint256) public votedCandidate;
+    mapping(address => uint256[]) public votedCandidates;
     mapping(bytes32 => bool) internal candidateNameExists;
 
     event ElectionStarted(uint256 indexed electionId);
@@ -60,6 +60,11 @@ abstract contract BaseElection {
         require(isElectionActive(), "Election is not active");
         _;
     }
+
+    modifier onlyBeforeStart() {
+    require(!isActive && startTime == 0 && !endedManually, "Election already started");
+    _;
+}
 
     function __BaseElection_init(
         string memory _name,
@@ -117,7 +122,7 @@ abstract contract BaseElection {
 
     function addCandidates(
         string[] memory _names
-    ) external onlyCreatorOrAdmin(electionId) {
+    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
         _addCandidates(_names);
     }
 
@@ -149,6 +154,10 @@ abstract contract BaseElection {
     function getCandidates() external view returns (Candidate[] memory) {
         return candidates;
     }
+
+    function getVotedCandidateIds(address user) external view returns (uint256[] memory) {
+    return votedCandidates[user];
+}
 
     function getCoreElectionData()
         external

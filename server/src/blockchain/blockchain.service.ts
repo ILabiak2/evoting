@@ -4,7 +4,10 @@ import { VotingFactory } from './abi/VotingFactory';
 import * as VotingFactoryABI from './abi/VotingFactory.json';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { CreateElectionParams } from './types/election.interface';
-import { ElectionType, ElectionTypeFromNumber } from './types/election-type.enum';
+import {
+  ElectionType,
+  ElectionTypeFromNumber,
+} from './types/election-type.enum';
 
 declare global {
   interface BigInt {
@@ -40,6 +43,49 @@ export class BlockchainService {
       this.provider,
     ) as unknown as VotingFactory;
     // this.contractWithSigner = this.contract.connect(this.adminWallet);
+  }
+
+  formatElectionData(election: any) {
+    const { coreData, electionType, contractAddress } = election;
+
+    const {
+      id,
+      name,
+      startTime,
+      endTime,
+      creator,
+      isActive,
+      startedManually,
+      endedManually,
+      candidateCount,
+      voterLimit,
+      candidates: candidatesRaw,
+    } = coreData;
+
+    const candidates = candidatesRaw.map((candidate: any) => ({
+      id: candidate.id,
+      name: candidate.name,
+      votes: Number(candidate.voteCount),
+    }));
+
+    const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+
+    return {
+      id,
+      name,
+      startTime: Number(startTime),
+      endTime: Number(endTime),
+      creator,
+      isActive,
+      startedManually,
+      endedManually,
+      candidateCount: Number(candidateCount),
+      voterLimit: Number(voterLimit),
+      electionType: ElectionTypeFromNumber[Number(electionType)],
+      contractAddress,
+      candidates,
+      totalVotes,
+    };
   }
 
   async getDomain() {
@@ -164,69 +210,34 @@ export class BlockchainService {
 
     const electionsRaw = await contractWithSigner.getMyElections();
 
-    const elections = electionsRaw.map((election: any) => {
-      const {
-        coreData,
-        electionType,
-        contractAddress,
-      } = election;
-
-      const {
-        id,
-        name,
-        startTime,
-        endTime,
-        creator,
-        isActive,
-        startedManually,
-        endedManually,
-        candidateCount,
-        voterLimit,
-        candidates: candidatesRaw,
-      } = coreData;
-
-      const candidates = candidatesRaw.map((candidate: any) => ({
-        id: candidate.id,
-        name: candidate.name,
-        votes: Number(candidate.voteCount),
-      }));
-
-      const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
-    
-      return {
-        id,
-        name,
-        startTime: Number(startTime),
-        endTime: Number(endTime),
-        creator,
-        isActive,
-        startedManually,
-        endedManually,
-        candidateCount: Number(candidateCount),
-        voterLimit: Number(voterLimit),
-        electionType: ElectionTypeFromNumber[Number(electionType)],
-        contractAddress,
-        candidates,
-        totalVotes
-      };
-
-
-    });
+    const elections = electionsRaw.map((election: any) =>
+      this.formatElectionData(election),
+    );
 
     return elections;
   }
 
   async getElectionMetadata(electionId: number) {
     const election = await this.contract.getElection(electionId);
-    const {name, creator} = election.coreData
+    const { name, creator } = election.coreData;
     const electionTypeIndex = Number(election.electionType);
-    return {          
+    return {
       name: name,
       election_address: election.contractAddress,
       factory_address: process.env.CONTRACT_ADDRESS,
       election_type: ElectionTypeFromNumber[electionTypeIndex],
       creator: creator,
     };
+  }
+
+  async getElectionData(address: string) {
+    try {
+      const election = await this.contract.getElectionByAddress(address);
+      return this.formatElectionData(election);
+    } catch (error) {
+      console.error('Failed to get election data:', error);
+      throw new Error('Failed to get election data by address');
+    }
   }
 
   async writeSomething() {

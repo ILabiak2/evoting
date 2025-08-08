@@ -40,6 +40,13 @@ contract VotingFactory is EIP712 {
         address contractAddress;
     }
 
+    struct UserElectionInfo {
+        FullElectionInfo fullInfo;
+        bool isCreator;
+        bool hasVoted;
+        uint256[] votedCandidateIds;
+    }
+
     uint256 public electionCounter;
     mapping(uint256 => ElectionInfo) public elections;
 
@@ -228,13 +235,28 @@ contract VotingFactory is EIP712 {
 
     function getElectionByAddress(
         address addr
-    ) external view returns (FullElectionInfo memory) {
+    ) external view returns (UserElectionInfo memory info) {
+        uint256 id = type(uint256).max;
         for (uint256 i = 0; i < electionCounter; i++) {
             if (elections[i].contractAddress == addr) {
-                return _buildFullElectionInfo(i);
+                id = i;
+                break;
             }
         }
-        revert("Election not found");
+        require(id != type(uint256).max, "Election not found");
+
+        FullElectionInfo memory full = _buildFullElectionInfo(id);
+
+        bool isCreator = (elections[id].creator == msg.sender);
+        uint256[] memory votedIds = ElectionData(full.contractAddress)
+            .getVotedCandidateIds(msg.sender);
+
+        info = UserElectionInfo({
+            fullInfo: full,
+            isCreator: isCreator,
+            hasVoted: votedIds.length > 0,
+            votedCandidateIds: votedIds
+        });
     }
 
     function _buildFullElectionInfo(

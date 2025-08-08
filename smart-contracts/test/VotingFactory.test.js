@@ -121,7 +121,7 @@ describe("VotingFactory", function () {
 
     it("Отримання інформації про вибрані голосування за адресою]", async () => {
       const tx = await voting.createPublicElection(
-        'Election',
+        "Election",
         ["Candidate 1"],
         0,
         true
@@ -135,13 +135,18 @@ describe("VotingFactory", function () {
 
       election = await voting.getElectionByAddress(electionAddress);
 
-      expect(election.coreData.id).to.equal(0);
-      expect(election.electionType).to.equal(0);
-      expect(election.coreData.isActive).to.equal(true);
-      expect(election.coreData.name).to.equal('Election');
-      expect(election.coreData.candidateCount).to.equal(1);
-      expect(election.coreData.candidates[0].name).to.equal("Candidate 1");
-      expect(election.contractAddress).to.equal(electionAddress);
+      expect(election.fullInfo.coreData.id).to.equal(0);
+      expect(election.hasVoted).to.equal(false);
+      console.log(election.votedCandidateIds);
+      expect(election.votedCandidateIds).to.deep.equal([]);
+      expect(election.fullInfo.electionType).to.equal(0);
+      expect(election.fullInfo.coreData.isActive).to.equal(true);
+      expect(election.fullInfo.coreData.name).to.equal("Election");
+      expect(election.fullInfo.coreData.candidateCount).to.equal(1);
+      expect(election.fullInfo.coreData.candidates[0].name).to.equal(
+        "Candidate 1"
+      );
+      expect(election.fullInfo.contractAddress).to.equal(electionAddress);
     });
 
     it("Отримання інформації про голосування користувача", async () => {
@@ -282,7 +287,7 @@ describe("VotingFactory", function () {
         "Голосування 1",
         ["Кандидат 1"],
         0,
-        true
+        false
       );
       const receipt = await tx.wait();
 
@@ -303,7 +308,7 @@ describe("VotingFactory", function () {
       expect(all[0].coreData.candidates[0].name).to.equal("Кандидат 1");
       expect(all[0].coreData.candidates[1].name).to.equal("Кандидат 2");
 
-      const activeElections = await voting.getActiveElections();
+      const activeElections = await voting.getAllElections();
 
       expect(activeElections.length).to.equal(1);
       expect(activeElections[0].coreData.name).to.equal("Голосування 1");
@@ -318,12 +323,36 @@ describe("VotingFactory", function () {
       expect(activeElections[0].coreData.candidates.length).to.equal(2);
     });
 
+    it("Забороняє додавати кандидати після старту", async function () {
+      const tx = await voting.createPrivateElection(
+        "Голосування 1",
+        ["Кандидат 1"],
+        0,
+        true
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      const electionAddress = event?.args.contractAddress;
+
+      const election = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      await expect(election.addCandidates(["Кандидат 2"])).to.be.revertedWith(
+        "Election already started"
+      );
+    });
+
     it("Забороняє додавати більше ніж MAX_CANDIDATES", async function () {
       const tx = await voting.createPrivateElection(
         "Test 1",
         ["Кандидат 1"],
         0,
-        true
+        false
       );
       const receipt = await tx.wait();
 
@@ -351,7 +380,7 @@ describe("VotingFactory", function () {
         "Вибори",
         ["Іван Іванович"],
         0,
-        true
+        false
       );
       const receipt = await tx.wait();
 
@@ -383,7 +412,7 @@ describe("VotingFactory", function () {
         electionName,
         ["First"],
         0,
-        true
+        false
       );
       const receipt = await tx.wait();
 
@@ -656,6 +685,20 @@ describe("VotingFactory", function () {
       expect(voteAfter.userVoted).to.equal(true);
       expect(voteAfter.candidateId).to.equal(0);
       expect(voteAfter.candidateName).to.equal("Кандидат 1");
+
+      let electionData = await voting
+        .connect(user1)
+        .getElectionByAddress(electionAddress);
+      expect(electionData.hasVoted).to.equal(true);
+      expect(electionData.votedCandidateIds.map(Number)).to.deep.equal([0]);
+      expect(electionData.isCreator).to.equal(false);
+
+      electionData = await voting
+        .connect(user2)
+        .getElectionByAddress(electionAddress);
+      expect(electionData.hasVoted).to.equal(false);
+      expect(electionData.votedCandidateIds.map(Number)).to.deep.equal([]);
+      expect(electionData.isCreator).to.equal(false);
     });
   });
 

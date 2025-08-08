@@ -22,8 +22,10 @@ export class ElectionController {
 
   @Post()
   create(@Body() createElectionDto: CreateElectionDto, @User() user) {
-    if(user.role !== 'creator'){
-      throw new ForbiddenException('You are not authorized to create elections');
+    if (user.role !== 'creator') {
+      throw new ForbiddenException(
+        'You are not authorized to create elections',
+      );
     }
     return this.electionService.create(createElectionDto, user.userId);
   }
@@ -38,8 +40,8 @@ export class ElectionController {
     return this.electionService.getUserElections(userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.electionService.getElectionData(+id);
+  @Get(':address')
+  findOne(@Param('address') address: string) {
+    return this.electionService.getElectionData(address);
   }
 }

@@ -4,6 +4,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { useUserElections } from "@/lib/hooks/useUserElections";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 const ElectionType = {
   public_single_choice: "Public (Single Choice)",
@@ -13,6 +14,7 @@ const ElectionType = {
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: elections, isLoading, error } = useUserElections();
+  const router = useRouter();
   // const [elections, setElections] = useState([]);
   // const [isLoading, setIsLoading] = useState(true);
 
@@ -53,7 +55,7 @@ export default function Dashboard() {
             {user?.role === "creator" && (
               <button
                 onClick={() => {
-                  window.location.href = "/election-create";
+                  router.push("/election-create");
                 }}
                 className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
               >
@@ -74,6 +76,8 @@ export default function Dashboard() {
                     votes={election.totalVotes}
                     userRole={user?.role}
                     electionType={ElectionType[election.electionType]}
+                    address={election.contractAddress}
+                    router={router}
                   />
                 ))}
               </ul>
@@ -86,7 +90,7 @@ export default function Dashboard() {
                     </p>
                     <button
                       onClick={() => {
-                        window.location.href = "/election-create";
+                        router.push("/election-create");
                       }}
                       className="w-60 transform mb-20 rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
                     >
@@ -129,15 +133,6 @@ export default function Dashboard() {
               </p>
             </div>
           )}
-          {/* <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
-              <ElectionInfo title={"Election 2"} votes={1} />
-              <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
-              <ElectionInfo title={"Election 2"} votes={1} />
-              <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
-              <ElectionInfo title={"Election 2"} votes={1} />
-              <ElectionInfo title={"Election 1"} isActive={true} votes={10} />
-              <ElectionInfo title={"Election 2"} votes={1} /> */}
-
         </div>
       </div>
     </div>
@@ -151,6 +146,8 @@ const ElectionInfo = ({
   votes,
   userRole,
   electionType,
+  address,
+  router,
 }) => {
   return (
     <li className={`list-none min-h-[14rem] ${area}`}>
@@ -197,7 +194,11 @@ const ElectionInfo = ({
                   </h3>
                 )}
 
-                <button className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                <button 
+                onClick={() => {
+                  router.push(`/election/${address}`);
+                }}
+                className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
                   {userRole === "creator"
                     ? "Manage"
                     : isActive
