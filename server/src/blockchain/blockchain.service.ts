@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
-import { VotingFactory } from './abi/VotingFactory';
-import * as VotingFactoryABI from './abi/VotingFactory.json';
+// import { VotingFactory } from './abi/VotingFactory';
+// import * as VotingFactoryABI from './abi/VotingFactory.json';
+import { VotingFactory } from './_types/VotingFactory';
+import * as VotingFactoryABI from './_abi/VotingFactory.json';
+// import * as VotingFactoryABI from './abi/VotingFactory.json';
+// import {VotingFactoryABI, types} from '@repo/contracts-artifacts'
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { CreateElectionParams } from './types/election.interface';
 import {
@@ -25,11 +29,14 @@ export class BlockchainService {
   private provider: ethers.JsonRpcProvider;
   private contract: VotingFactory;
   private adminWallet: ethers.Wallet;
+  private contractAddress1: string;
   // private contractWithSigner: ethers.Contract;
 
   constructor(private readonly azureKeyVaultService: AzureKeyVaultService) {
     const rpcUrl = process.env.ARBITRUM_SEPOLIA_RPC_URL;
     const contractAddress = process.env.CONTRACT_ADDRESS;
+
+    this.contractAddress1 = ethers.getAddress(String(process.env.CONTRACT_ADDRESS));
 
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
     this.adminWallet = new ethers.Wallet(
@@ -39,7 +46,7 @@ export class BlockchainService {
 
     this.contract = new ethers.Contract(
       contractAddress,
-      VotingFactoryABI.abi as any,
+      VotingFactoryABI as any,
       this.provider,
     ) as unknown as VotingFactory;
     // this.contractWithSigner = this.contract.connect(this.adminWallet);
@@ -95,7 +102,7 @@ export class BlockchainService {
       name: 'VotingFactory',
       version: '1',
       chainId: network.chainId,
-      verifyingContract: this.contract.target.toString(),
+      verifyingContract: await this.contract.target.toString(),
     };
   }
 

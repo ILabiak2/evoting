@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "clean": "rm -rf artifacts cache ../server/src/blockchain/_types",
+    "compile": "hardhat compile",
+    "types": "typechain --target ethers-v6 --out-dir ../server/src/blockchain/_types artifacts/contracts/**/*[!dbg].json",
+    "abis": "tsx scripts/export-abis.ts ../server/src/blockchain/_abi",
+    "build": "npm run clean && npm run compile && npm run types && npm run abis"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.26.2",

@@ -37,3 +37,6 @@ lerna-debug.log*
 
 
 .env
+
+/src/blockchain/_abi
+/src/blockchain/_types
