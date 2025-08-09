@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex h-full w-full flex-1 flex-col gap-2  border-neutral-200 bg-white p-2 md:p-10 dark:border-neutral-700 dark:bg-neutral-950">
+      <div className="flex h-full w-full flex-1 flex-col gap-2  border-neutral-200 bg-white p-2 md:p-10 md:pt-0 dark:border-neutral-700 dark:bg-neutral-950">
         <div className="flex gap-2">
           <div className="h-15 md:h-20 w-full rounded-lg flex flex-row items-center gap-2">
             <p className="text-2xl md:text-3xl font-bold">Elections</p>
