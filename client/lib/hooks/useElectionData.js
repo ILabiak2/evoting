@@ -16,6 +16,7 @@ export const useElectionData = (address) => {
 
       return res.json();
     },
+    retry: false,
     enabled: !!address,
     staleTime: Infinity,
     refetchOnWindowFocus: false,

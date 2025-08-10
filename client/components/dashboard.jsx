@@ -5,11 +5,13 @@ import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { useUserElections } from "@/lib/hooks/useUserElections";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { useJoinPrivateElection } from "@/lib/hooks/useJoinElection";
+import { X, CheckCircle2 } from "lucide-react";
 
 const ElectionType = {
   public_single_choice: "Public (Single Choice)",
-  private_single_choice: "Private (Single Choice",
-}
+  private_single_choice: "Private (Single Choice)",
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -24,9 +26,11 @@ export default function Dashboard() {
         <div className="flex gap-2">
           <div className="h-15 md:h-20 w-full rounded-lg flex flex-row items-center gap-2">
             <p className="text-2xl md:text-3xl font-bold">Elections</p>
-            <p className="flex items-center justify-center text-2xl ml-2 md:ml-5 md:text-3xl font-bold rounded-full min-w-[3rem] px-2 aspect-square bg-sidebar select-none">
-              1
-            </p>
+            {elections && (
+              <p className="flex items-center justify-center text-2xl ml-2 md:ml-5 md:text-3xl font-bold rounded-full min-w-[3rem] px-2 aspect-square bg-sidebar select-none">
+                {elections.length}
+              </p>
+            )}
           </div>
           <div className="h-15 md:h-20 flex justify-end items-center w-full rounded-lg">
             {user?.role == "user" && (
@@ -104,7 +108,7 @@ export default function Dashboard() {
                       You're not invited to any elections yet. <br /> Join an
                       election
                     </p>
-                    <div className="flex flex-col md:flex-row items-center gap-4 mb-20">
+                    {/* <div className="flex flex-col md:flex-row items-center gap-4 mb-20">
                       <Input
                         id="inviteCode"
                         name="inviteCode"
@@ -120,7 +124,8 @@ export default function Dashboard() {
                       >
                         Join election
                       </button>
-                    </div>
+                    </div> */}
+                    <JoinElection />
                   </div>
                 )}
               </>
@@ -194,16 +199,17 @@ const ElectionInfo = ({
                   </h3>
                 )}
 
-                <button 
-                onClick={() => {
-                  router.push(`/election/${address}`);
-                }}
-                className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                <button
+                  onClick={() => {
+                    router.push(`/election/${address}`);
+                  }}
+                  className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
                   {userRole === "creator"
                     ? "Manage"
                     : isActive
-                    ? "Vote"
-                    : "Results"}
+                      ? "Vote"
+                      : "Results"}
                   &rarr;
                 </button>
               </div>
@@ -212,5 +218,94 @@ const ElectionInfo = ({
         </div>
       </div>
     </li>
+  );
+};
+
+const JoinElection = () => {
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joinError, setJoinError] = useState("");
+  const joinMutation = useJoinPrivateElection();
+
+  const handgleButtonClick = async () => {
+    setJoinError("");
+    try {
+      const res = await joinMutation.mutateAsync(inviteCode);
+      if (res?.joined) {
+        setJoinOpen(true);
+      }
+    } catch (err) {
+      setJoinError(err?.message || "Action failed.");
+      setJoinOpen(true);
+    }
+  };
+
+  return (
+    <>
+      <div className="flex flex-col md:flex-row items-center gap-4 mb-20">
+        <Input
+          id="inviteCode"
+          name="inviteCode"
+          placeholder="Your code"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          onBlur={() => setInviteCode((v) => v.trim())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && inviteCode.trim()) {
+              handgleButtonClick();
+            }
+          }}
+          type="text"
+          className="w-85 md:w-full  md:mt-0 mt-0"
+        />
+        <button
+          onClick={handgleButtonClick}
+          disabled={joinMutation.isPending || !inviteCode.trim()}
+          className="w-40 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+        >
+          {joinMutation.isPending ? "Joining..." : "Join election"}
+        </button>
+      </div>
+      {joinOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-300 bg-white p-5 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                {joinError ? "Could not join election" : "Election joined"}
+              </h3>
+              <button
+                onClick={() => setJoinOpen(false)}
+                className="p-2 cursor-pointer rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {joinError ? (
+              <div className="rounded bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+                {joinError}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
+                <p className="text-sm">
+                  This public election has been added to your list
+                </p>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setJoinOpen(false)}
+                className="inline-flex items-center cursor-pointer rounded-lg border-1 bg-black px-4 py-2 text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };

@@ -1,13 +1,27 @@
-import { Injectable, UseGuards } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  HttpException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Logger } from '@nestjs/common';
+import { randomBytes } from 'crypto';
+import { use } from 'passport';
 
 @Injectable()
 export class ElectionService {
   private readonly logger = new Logger(ElectionService.name);
+
+  private generateInviteCode(length = 16): string {
+    const bytes = randomBytes(Math.ceil((length * 3) / 4));
+    return bytes.toString('base64url').slice(0, length);
+  }
 
   constructor(
     private readonly blockchain: BlockchainService,
@@ -63,15 +77,262 @@ export class ElectionService {
     return status;
   }
 
-  getUserElections(userId: string) {
-    return this.blockchain.getUserElections(userId);
+  getCreatorElections(userId: string) {
+    return this.blockchain.getCreatorElections(userId);
   }
 
-  getElectionData(address: string) {
-    return this.blockchain.getElectionData(address);
+  async getUserElections(userId: string) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    // Pull election contract ids for this user, scoping to the factory address
+    const links = await this.prisma.user_elections.findMany({
+      where: {
+        user_id: userId,
+        election_meta: { factory_address: process.env.CONTRACT_ADDRESS },
+      },
+      select: {
+        election_meta: {
+          select: {
+            contract_id: true,
+          },
+        },
+      },
+    });
+
+    const ids = links
+      .map((l) => l.election_meta?.contract_id)
+      .filter((v): v is number => typeof v === 'number');
+
+    if (ids.length === 0) return [];
+
+    return this.blockchain.getElectionByIds(ids);
+  }
+
+  async getElectionData(address: string, userId: string) {
+    const election = await this.blockchain.getElectionData(address, userId);
+
+    const meta = await this.prisma.elections_metadata.findFirst({
+      where: {
+        election_address: address,
+        factory_address: process.env.CONTRACT_ADDRESS,
+      },
+      select: { id: true },
+    });
+
+    let isParticipant = false;
+    if (meta && userId) {
+      const membership = await this.prisma.user_elections.findUnique({
+        where: {
+          user_id_election_id: {
+            user_id: userId,
+            election_id: meta.id,
+          },
+        },
+        select: { id: true },
+      });
+      isParticipant = !!membership;
+    }
+
+    return {
+      ...election,
+      isParticipant,
+    };
   }
 
   findAll() {
     return `This action returns all election`;
+  }
+
+  async generateInvites(
+    electionAddress: string,
+    quantity: number,
+    userId: string,
+  ) {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 200) {
+      throw new BadRequestException('Quantity must be between 1 and 200');
+    }
+
+    const election = await this.prisma.elections_metadata.findUnique({
+      where: {
+        election_address: electionAddress,
+        factory_address: process.env.CONTRACT_ADDRESS,
+      },
+      select: { id: true, election_type: true, creator: true },
+    });
+    if (!election) throw new NotFoundException('Election not found');
+    if (election.election_type !== 'private_single_choice') {
+      throw new BadRequestException(
+        'Invites can only be generated for private elections',
+      );
+    }
+
+    const requester = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { id: true, wallets: { select: { public_address: true } } },
+    });
+    if (!requester) throw new NotFoundException('User not found');
+
+    const creatorStr = election.creator?.toString() || '';
+    const isCreatorByWallet = requester.wallets.some(
+      (w) =>
+        w.public_address &&
+        w.public_address.toLowerCase() === creatorStr.toLowerCase(),
+    );
+    if (!isCreatorByWallet) {
+      throw new ForbiddenException(
+        'Only the election creator can generate invites',
+      );
+    }
+
+    const target = Math.max(1, Math.min(quantity, 200));
+    const created: string[] = [];
+
+    while (created.length < target) {
+      const remaining = target - created.length;
+
+      // 1) generate exactly how many you still need, dedupe in-memory
+      const candidateSet = new Set<string>();
+      while (candidateSet.size < remaining) {
+        candidateSet.add(this.generateInviteCode(16));
+      }
+      const candidates = Array.from(candidateSet);
+
+      // 2) filter out any that already exist (global uniqueness on `code`)
+      const existing = await this.prisma.invites.findMany({
+        where: { code: { in: candidates } },
+        select: { code: true },
+      });
+      const existingSet = new Set(existing.map((x) => x.code));
+      const toInsert = candidates.filter((c) => !existingSet.has(c));
+
+      if (toInsert.length === 0) {
+        continue;
+      }
+
+      await this.prisma.invites.createMany({
+        data: toInsert.map((code) => ({
+          code,
+          election_id: election.id,
+        })),
+        skipDuplicates: true,
+      });
+
+      const nowExisting = await this.prisma.invites.findMany({
+        where: { code: { in: toInsert }, election_id: election.id },
+        select: { code: true },
+      });
+
+      for (const { code } of nowExisting) {
+        if (created.length < target && !created.includes(code)) {
+          created.push(code);
+        }
+      }
+    }
+
+    return { codes: created };
+  }
+
+  async joinPublicElection(electionAddress: string, userId: string) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    const meta = await this.prisma.elections_metadata.findFirst({
+      where: {
+        election_address: electionAddress,
+        factory_address: process.env.CONTRACT_ADDRESS,
+      },
+      select: { id: true, election_type: true },
+    });
+    if (!meta) throw new NotFoundException('Election not found');
+    if (!meta.election_type.includes('public')) {
+      throw new ForbiddenException('This election requires an invite code');
+    }
+
+    try {
+      await this.prisma.user_elections.create({
+        data: { user_id: userId, election_id: meta.id },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        return { joined: true };
+      }
+      throw new BadRequestException(
+        'Error while joining election: ' + e?.message,
+      );
+    }
+    return { joined: true };
+  }
+
+  async leavePublicElection(electionAddress: string, userId: string) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    const meta = await this.prisma.elections_metadata.findFirst({
+      where: {
+        election_address: electionAddress,
+        factory_address: process.env.CONTRACT_ADDRESS,
+      },
+      select: { id: true, election_type: true },
+    });
+    if (!meta) return { left: true };
+
+    const typeStr = String(meta.election_type);
+    if (!typeStr.includes('public')) {
+      throw new ForbiddenException(
+        'Leaving is only supported for public elections',
+      );
+    }
+    try {
+      await this.prisma.user_elections.delete({
+        where: {
+          user_id_election_id: {
+            user_id: userId,
+            election_id: meta.id,
+          },
+        },
+      });
+    } catch (e: any) {
+      // P2025 = record not found (user wasn't a participant) -> treat as success (idempotent)
+      if (e?.code !== 'P2025') {
+        throw new BadRequestException(
+          'Error while leaving election: ' + e?.message,
+        );
+      }
+    }
+
+    return { left: true };
+  }
+
+  async joinPrivateElection(
+    code: string,
+    userId: string,
+  ) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    const invite = await this.prisma.invites.findFirst({
+      where: { code, is_expired: false },
+      select: { id: true, is_used: true, election_id: true },
+    });
+    if (!invite) throw new NotFoundException('Wrong invite code');
+    if (invite.is_used)
+      throw new ForbiddenException('Invite code was already used');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.invites.update({
+        where: { id: invite.id },
+        data: { is_used: true, used_by_id: userId, used_at: new Date() },
+      });
+
+      try {
+        await tx.user_elections.create({
+          data: { user_id: userId, election_id: invite.election_id },
+        });
+      } catch (e: any) {
+        if (e?.code !== 'P2002') return { joined: true };
+        throw new BadRequestException(
+          'Error while joining election: ' + e?.message,
+        );
+      }
+    });
+
+    return { joined: true };
   }
 }

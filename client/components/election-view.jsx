@@ -2,86 +2,101 @@
 import React, { useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Bell, Copy, ArrowLeft, Check, X } from "lucide-react";
+import { useElectionData } from "@/lib/hooks/useElectionData";
+import { useGenerateInvites } from "@/lib/hooks/useGenerateInvites";
+import {
+  useJoinPublicElection,
+  useLeavePublicElection,
+} from "@/lib/hooks/useJoinElection";
+import {
+  Bell,
+  Copy,
+  ArrowLeft,
+  Check,
+  X,
+  Heart,
+  CheckCircle2,
+} from "lucide-react";
+
+const ElectionType = {
+  public_single_choice: "Public (Single Choice)",
+  private_single_choice: "Private (Single Choice)",
+};
 
 export default function ElectionView({ address }) {
   const router = useRouter();
   const { user } = useAuth();
-  const data = {
-    id: 0,
-    name: "Election for Student Body President",
-    startTime: 1754477820,
-    endTime: 0,
-    creator: "0x076bC5E783c557287A88a1Ee427b0fbf3E17c5bF",
-    isActive: false,
-    startedManually: false,
-    endedManually: false,
-    candidateCount: 3,
-    voterLimit: 0,
-    electionType: "public_single_choice",
-    contractAddress: "0xAEe41ce7bd26596E31236ff34260B163fBb29D9D",
-    candidates: [
-      {
-        id: 0,
-        name: "Sarah Chen",
-        votes: 120,
-      },
-      {
-        id: 1,
-        name: "David Lee",
-        votes: 110,
-      },
-      {
-        id: 2,
-        name: "Maria RodriguezRodriguezRodriguez",
-        votes: 95,
-      },
-      {
-        id: 3,
-        name: "Sarah Chen",
-        votes: 120,
-      },
-      {
-        id: 4,
-        name: "David Lee",
-        votes: 110,
-      },
-      {
-        id: 5,
-        name: "Maria RodriguezRodriguezRodriguez",
-        votes: 95,
-      },
-      {
-        id: 6,
-        name: "Sarah Chen",
-        votes: 120,
-      },
-      {
-        id: 7,
-        name: "David Lee",
-        votes: 110,
-      },
-      {
-        id: 8,
-        name: "Maria RodriguezRodriguezRodriguez",
-        votes: 95,
-      },
-    ],
-    totalVotes: 325,
-    isCreator: true,
-    hasVoted: false,
-    votedCandidateIds: [1, 4],
-  };
-  const isLoading = false;
-  const isError = false;
+  const { data: election, isLoading, error } = useElectionData(address);
+  // const election = {
+  //   id: 0,
+  //   name: "Election for Student Body President",
+  //   startTime: 1754477820,
+  //   endTime: 0,
+  //   creator: "0x076bC5E783c557287A88a1Ee427b0fbf3E17c5bF",
+  //   isActive: false,
+  //   startedManually: false,
+  //   endedManually: false,
+  //   candidateCount: 3,
+  //   voterLimit: 0,
+  //   electionType: "public_single_choice",
+  //   contractAddress: "0xAEe41ce7bd26596E31236ff34260B163fBb29D9D",
+  //   candidates: [
+  //     {
+  //       id: 0,
+  //       name: "Sarah Chen",
+  //       votes: 120,
+  //     },
+  //     {
+  //       id: 1,
+  //       name: "David Lee",
+  //       votes: 110,
+  //     },
+  //     {
+  //       id: 2,
+  //       name: "Maria RodriguezRodriguezRodriguez",
+  //       votes: 95,
+  //     },
+  //     {
+  //       id: 3,
+  //       name: "Sarah Chen",
+  //       votes: 120,
+  //     },
+  //     {
+  //       id: 4,
+  //       name: "David Lee",
+  //       votes: 110,
+  //     },
+  //     {
+  //       id: 5,
+  //       name: "Maria RodriguezRodriguezRodriguez",
+  //       votes: 95,
+  //     },
+  //     {
+  //       id: 6,
+  //       name: "Sarah Chen",
+  //       votes: 120,
+  //     },
+  //     {
+  //       id: 7,
+  //       name: "David Lee",
+  //       votes: 110,
+  //     },
+  //     {
+  //       id: 8,
+  //       name: "Maria RodriguezRodriguezRodriguez",
+  //       votes: 95,
+  //     },
+  //   ],
+  //   totalVotes: 325,
+  //   isCreator: true,
+  //   hasVoted: false,
+  //   votedCandidateIds: [1, 4],
+  // };
+  // const isLoading = false;
+  // const error = false;
 
   const handleCopyAddress = (text) => {
     navigator.clipboard.writeText(text);
-  };
-
-  const handleGenerateInviteCode = () => {
-    // TODO: Implement invite code generation
-    console.log("Generate invite code");
   };
 
   return (
@@ -131,46 +146,77 @@ export default function ElectionView({ address }) {
             </div>
           )}
 
-          {isError && (
+          {error && (
             <div className="flex flex-col justify-center items-center h-full w-full">
-              <p className="text-2xl text-center font-bold mb-20">
+              <p className="text-2xl text-center font-bold">
                 Error loading election data.
               </p>
+              <p className="text-2xl text-center text-red-500 font-bold mb-2">
+                {error?.message}
+              </p>
+              <div className="h-15 md:h-20 flex justify-center items-center w-full rounded-lg">
+                <button
+                  onClick={() => {
+                    router.push("/dashboard");
+                  }}
+                  className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+                >
+                  Back to dashboard
+                </button>
+              </div>
             </div>
           )}
 
-          {!isLoading && !isError && data && (
+          {!isLoading && !error && election && (
             <div className="w-full">
               {/* Election Title */}
               <div className="mb-8">
-                <div className="flex flex-row items-center pr-2 md:pr-0">
-                  <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                    {data.name}
-                  </h1>
-                  <span
-                    className={`ml-5 p-2 inline-block h-3 w-3 rounded-full
+                <div className="flex flex-row items-center justify-between md:pr-0">
+                  <div className="flex flex-row items-center">
+                    <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                      {election.name}
+                    </h1>
+                    <span
+                      className={`ml-5 p-2 inline-block h-3 w-3 rounded-full
                       ${
-                        data?.isActive
+                        election?.isActive
                           ? "bg-green-500 animate-pulse shadow-[0_0_12px_4px_rgba(34,197,94,0.7)]"
                           : "bg-red-500 shadow-[0_0_12px_4px_rgba(239,68,68,0.7)]"
                       }`}
-                  ></span>
+                    ></span>
+                  </div>
+                  <JoinElectionButton
+                    electionAddress={election?.contractAddress}
+                    electionType={election?.electionType}
+                    isCreator={election?.isCreator}
+                    isParticipant={election?.isParticipant}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-muted-foreground">Address:</p>
                   <p
                     className="cursor-pointer text-sm font-medium hover:text-primary break-words hyphens-auto"
                     title="Click to copy address"
-                    onClick={() => handleCopyAddress(data.contractAddress)}
+                    onClick={() => handleCopyAddress(election.contractAddress)}
                   >
-                    {data.contractAddress}
+                    {election.contractAddress}
                   </p>
                   <button
-                    onClick={() => handleCopyAddress(data.contractAddress)}
+                    onClick={() => handleCopyAddress(election.contractAddress)}
                     className="p-1 hover:bg-muted rounded cursor-pointer"
                   >
                     <Copy size={14} />
                   </button>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Type:</span>
+                  <span
+                    title={election.electionType}
+                    className="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-100"
+                  >
+                    {ElectionType[election.electionType] ??
+                      election.electionType}
+                  </span>
                 </div>
               </div>
 
@@ -182,7 +228,7 @@ export default function ElectionView({ address }) {
                     <div className="grid grid-cols-3 gap-4 items-center">
                       <span className="font-medium">Candidate</span>
                       <span className="font-medium">Votes</span>
-                      {data?.hasVoted ? (
+                      {election?.hasVoted ? (
                         <span className="font-medium text-right md:mr-10">
                           Your vote
                         </span>
@@ -194,7 +240,7 @@ export default function ElectionView({ address }) {
                     </div>
                   </div>
                   <div className="divide-y divide-neutral-200 dark:divide-neutral-700 items-center max-h-[30vh] md:max-h-[40vh] overflow-y-auto">
-                    {data.candidates.map((candidate) => (
+                    {election.candidates.map((candidate) => (
                       <div
                         key={candidate.id}
                         className="px-6 py-4 hover:bg-muted/50 transition-colors"
@@ -210,18 +256,20 @@ export default function ElectionView({ address }) {
                               {candidate.votes}
                             </span>
                           </div>
-                          {data?.isCreator ? (
+                          {election?.isCreator ? (
                             <EditButton
-                              disabled={data.isActive || data.startedManually}
+                              disabled={
+                                election.isActive || election.startedManually
+                              }
                               candidateId={candidate.id}
-                              electionAddress={data.contractAddress}
+                              electionAddress={election.contractAddress}
                             />
                           ) : (
                             <>
-                              {data?.hasVoted ? (
+                              {election?.hasVoted ? (
                                 <div className="flex items-center justify-end text-right md:mr-10">
-                                  {Array.isArray(data.votedCandidateIds) &&
-                                  data.votedCandidateIds.includes(
+                                  {Array.isArray(election.votedCandidateIds) &&
+                                  election.votedCandidateIds.includes(
                                     candidate.id
                                   ) ? (
                                     <span className="inline-flex items-center text-green-500 font-medium">
@@ -237,7 +285,12 @@ export default function ElectionView({ address }) {
                               ) : (
                                 <VoteButton
                                   candidateId={candidate.id}
-                                  electionAddress={data.contractAddress}
+                                  electionAddress={election.contractAddress}
+                                  disabled={
+                                    String(election?.electionType).includes(
+                                      "private"
+                                    ) && !election.isParticipant
+                                  }
                                 />
                               )}
                             </>
@@ -250,10 +303,14 @@ export default function ElectionView({ address }) {
               </div>
 
               {/* Action Buttons */}
-              {data?.isCreator && data.endTime <= 0 && (
+              {election?.isCreator && election.endTime <= 0 && (
                 <div className="flex flex-col md:flex-row gap-4">
-                  {data?.isActive ? <StopButton /> : <StartButton />}
-                  <InviteCodesGenerator electionAddress={data.contractAddress} />
+                  {election?.isActive ? <StopButton /> : <StartButton />}
+                  {election.electionType.includes("private") && (
+                    <InviteCodesGenerator
+                      electionAddress={election.contractAddress}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -264,7 +321,7 @@ export default function ElectionView({ address }) {
   );
 }
 
-const VoteButton = ({ candidateId, electionAddress }) => {
+const VoteButton = ({ candidateId, electionAddress, disabled }) => {
   const handleCastVote = () => {
     // TODO: Implement vote casting
     console.log(`Cast vote ${candidateId}: ${electionAddress}`);
@@ -272,12 +329,22 @@ const VoteButton = ({ candidateId, electionAddress }) => {
 
   return (
     <div className="flex items-center justify-end text-right">
-      <button
-        onClick={handleCastVote}
-        className="flex-1 w-24 max-h-20 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 md:max-w-32 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
-      >
-        Vote
-      </button>
+      {disabled ? (
+        <button
+          disabled
+          title="You can't vote in this election"
+          className="flex-1 w-24 max-h-20 transform max-md:text-xs cursor-not-allowed opacity-50 rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 md:max-w-32 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
+        >
+          Vote
+        </button>
+      ) : (
+        <button
+          onClick={handleCastVote}
+          className="flex-1 w-24 max-h-20 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 md:max-w-32 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
+        >
+          Vote
+        </button>
+      )}
     </div>
   );
 };
@@ -339,28 +406,30 @@ const StopButton = ({ electionAddress }) => {
   );
 };
 
-
 const InviteCodesGenerator = ({ electionAddress }) => {
   const [qty, setQty] = useState("1");
   const [open, setOpen] = useState(false);
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const genCode = () =>
-    Math.random().toString(36).slice(2, 10).toUpperCase() +
-    "-" +
-    Math.random().toString(36).slice(2, 6).toUpperCase();
+  const invitesMutation = useGenerateInvites();
 
   const handleGenerate = async () => {
+    setErrorMessage("");
     try {
       setLoading(true);
-      // TODO: Replace with real API call, e.g.:
-      // const res = await fetch('/api/server/invites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ electionAddress, quantity: qty }) });
-      // const data = await res.json();
-      // setCodes(data.codes);
       const count = Math.max(1, Math.min(parseInt(qty || "0", 10) || 1, 200));
-      const out = Array.from({ length: count }, () => genCode());
+      const res = await invitesMutation.mutateAsync({
+        electionAddress,
+        quantity: count,
+      });
+      const out = Array.isArray(res?.codes) ? res.codes : [];
       setCodes(out);
+      setOpen(true);
+    } catch (err) {
+      console.error("Failed to generate invites:", err);
+      setErrorMessage(err?.message || "Failed to generate invites.");
       setOpen(true);
     } finally {
       setLoading(false);
@@ -375,7 +444,11 @@ const InviteCodesGenerator = ({ electionAddress }) => {
 
   const copyAll = async () => {
     try {
-      await navigator.clipboard.writeText(codes.join("\n"));
+      const text = codes
+        .map((c) => String(c).trim())
+        .filter(Boolean)
+        .join("\r\n"); // use CRLF for widest compatibility
+      await navigator.clipboard.writeText(text);
     } catch {}
   };
 
@@ -401,10 +474,12 @@ const InviteCodesGenerator = ({ electionAddress }) => {
         />
         <button
           onClick={handleGenerate}
-          disabled={loading}
+          disabled={loading || invitesMutation.isPending}
           className="flex-1 w-24 max-h-20 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-3 md:py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-70 md:max-w-80 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {loading ? "Generating..." : "Generate Invite Codes"}
+          {loading || invitesMutation.isPending
+            ? "Generating..."
+            : "Generate Invite Codes"}
         </button>
       </div>
 
@@ -422,9 +497,18 @@ const InviteCodesGenerator = ({ electionAddress }) => {
               </button>
             </div>
 
+            {errorMessage && (
+              <div className="mb-4 rounded bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="max-h-[50vh] overflow-y-auto divide-y divide-neutral-200 dark:divide-neutral-800">
               {codes.map((code) => (
-                <div key={code} className="flex items-center justify-between py-2">
+                <div
+                  key={code}
+                  className="flex items-center justify-between py-2"
+                >
                   <span className="font-mono text-sm">{code}</span>
                   <button
                     onClick={() => copyOne(code)}
@@ -437,16 +521,131 @@ const InviteCodesGenerator = ({ electionAddress }) => {
                 </div>
               ))}
               {codes.length === 0 && (
-                <div className="py-6 text-center text-sm text-neutral-500">No codes generated.</div>
+                <div className="py-6 text-center text-sm text-neutral-500">
+                  No codes generated.
+                </div>
               )}
             </div>
 
+            {!errorMessage && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={copyAll}
+                  className="flex items-center justify-center cursor-pointer rounded-lg border-1 bg-black px-5 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
+                >
+                  Copy all
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const JoinElectionButton = ({
+  electionAddress,
+  electionType,
+  isCreator,
+  isParticipant,
+}) => {
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinError, setJoinError] = useState("");
+  const [joined, setJoined] = useState(isParticipant);
+  const [modalMode, setModalMode] = useState(null); // 'joined' | 'left'
+  const joinMutation = useJoinPublicElection();
+  const leaveMutation = useLeavePublicElection();
+
+  const handgleButtonClick = async () => {
+    if (!String(electionType).includes("public")) return;
+    setJoinError("");
+    try {
+      if (!joined) {
+        const res = await joinMutation.mutateAsync(electionAddress);
+        if (res?.joined) {
+          setJoined(true);
+          setModalMode("joined");
+          setJoinOpen(true);
+        }
+      } else {
+        const res = await leaveMutation.mutateAsync(electionAddress);
+        if (res?.left) {
+          setJoined(false);
+          setModalMode("left");
+          setJoinOpen(true);
+        }
+      }
+    } catch (err) {
+      setJoinError(err?.message || "Action failed.");
+      setJoinOpen(true);
+    }
+  };
+
+  return (
+    <>
+      {!isCreator && (
+        <button
+          onClick={handgleButtonClick}
+          disabled={joinMutation.isPending || leaveMutation.isPending}
+          className="ml-3 inline-flex cursor-pointer items-center rounded-lg border-1 bg-black px-3 py-2 text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed"
+          title={
+            !String(electionType).includes("public")
+              ? "You can join private election only with invite code"
+              : joined
+                ? "Remove from your elections"
+                : "Add to your elections"
+          }
+          aria-label={joined ? "Leave public election" : "Join public election"}
+        >
+          {joined ? (
+            <CheckCircle2 className="h-5 w-5" />
+          ) : (
+            <Heart className="h-5 w-5" />
+          )}
+        </button>
+      )}
+      {joinOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-300 bg-white p-5 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                {joinError
+                  ? "Could not complete"
+                  : modalMode === "left"
+                    ? "Election removed"
+                    : "Election added"}
+              </h3>
+              <button
+                onClick={() => setJoinOpen(false)}
+                className="p-2 cursor-pointer rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {joinError ? (
+              <div className="rounded bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+                {joinError}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
+                <p className="text-sm">
+                  {modalMode === "left"
+                    ? "This public election has been removed from your list."
+                    : "This public election has been added to your list. You can find it on your dashboard."}
+                </p>
+              </div>
+            )}
+
             <div className="mt-4 flex justify-end">
               <button
-                onClick={copyAll}
-                className="flex items-center justify-center cursor-pointer rounded-lg border-1 bg-black px-5 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
+                onClick={() => setJoinOpen(false)}
+                className="inline-flex items-center cursor-pointer rounded-lg border-1 bg-black px-4 py-2 text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
               >
-                Copy all
+                Close
               </button>
             </div>
           </div>

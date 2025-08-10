@@ -1,11 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ethers } from 'ethers';
-// import { VotingFactory } from './abi/VotingFactory';
-// import * as VotingFactoryABI from './abi/VotingFactory.json';
 import { VotingFactory } from './_types/VotingFactory';
 import * as VotingFactoryABI from './_abi/VotingFactory.json';
-// import * as VotingFactoryABI from './abi/VotingFactory.json';
-// import {VotingFactoryABI, types} from '@repo/contracts-artifacts'
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { CreateElectionParams } from './types/election.interface';
 import {
@@ -25,18 +21,14 @@ BigInt.prototype.toJSON = function () {
 
 @Injectable()
 export class BlockchainService {
-  // private readonly azureKeyVaultService: AzureKeyVaultService;
   private provider: ethers.JsonRpcProvider;
   private contract: VotingFactory;
   private adminWallet: ethers.Wallet;
-  private contractAddress1: string;
   // private contractWithSigner: ethers.Contract;
 
   constructor(private readonly azureKeyVaultService: AzureKeyVaultService) {
     const rpcUrl = process.env.ARBITRUM_SEPOLIA_RPC_URL;
     const contractAddress = process.env.CONTRACT_ADDRESS;
-
-    this.contractAddress1 = ethers.getAddress(String(process.env.CONTRACT_ADDRESS));
 
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
     this.adminWallet = new ethers.Wallet(
@@ -104,6 +96,15 @@ export class BlockchainService {
       chainId: network.chainId,
       verifyingContract: await this.contract.target.toString(),
     };
+  }
+
+  async getSigner(userId: string) {
+    const vaultKeyName = `wallet-key-${userId}`;
+    const privateKey =
+      await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
+    const userWallet = new ethers.Wallet(privateKey, this.provider);
+
+    return this.contract.connect(userWallet);
   }
 
   async getSomething() {
@@ -206,14 +207,8 @@ export class BlockchainService {
     };
   }
 
-  async getUserElections(userId: string) {
-    const vaultKeyName = `wallet-key-${userId}`;
-    // console.log(vaultKeyName);
-    const privateKey =
-      await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
-    const userWallet = new ethers.Wallet(privateKey, this.provider);
-
-    const contractWithSigner = this.contract.connect(userWallet);
+  async getCreatorElections(userId: string) {
+    const contractWithSigner = await this.getSigner(userId);
 
     const electionsRaw = await contractWithSigner.getMyElections();
 
@@ -222,6 +217,19 @@ export class BlockchainService {
     );
 
     return elections;
+  }
+
+  async getElectionByIds(ids: number[]) {
+    try {
+      const elections = await this.contract.getElectionsByIds(ids);
+      if (!elections[0]) return [];
+      const result = elections.map((el) => this.formatElectionData(el));
+      return result;
+    } catch (error) {
+      throw new NotFoundException(
+        'Failed to get elections by ids: ' + error.shortMessage,
+      );
+    }
   }
 
   async getElectionMetadata(electionId: number) {
@@ -237,13 +245,23 @@ export class BlockchainService {
     };
   }
 
-  async getElectionData(address: string) {
+  async getElectionData(address: string, userId: string) {
     try {
-      const election = await this.contract.getElectionByAddress(address);
-      return this.formatElectionData(election);
+      const contractWithSigner = await this.getSigner(userId);
+      const election = await contractWithSigner.getElectionByAddress(address);
+      const { hasVoted, isCreator, votedCandidateIds } = election;
+      const electionData = this.formatElectionData(election.fullInfo);
+      return {
+        ...electionData,
+        hasVoted,
+        isCreator,
+        votedCandidateIds,
+      };
     } catch (error) {
       console.error('Failed to get election data:', error);
-      throw new Error('Failed to get election data by address');
+      throw new NotFoundException(
+        'Failed to get election data by address: ' + error.shortMessage,
+      );
     }
   }
 
