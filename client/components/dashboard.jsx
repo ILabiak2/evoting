@@ -68,6 +68,12 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        {elections?.length > 0 && (
+          <div className="flex flex-row md:justify-end gap-4 mb-2 md:mb-5">
+            <JoinElection />
+          </div>
+        )}
+
         <div className="flex gap-2 flex-1 overflow-y-auto items-start">
           {!isLoading ? (
             elections?.length > 0 ? (
@@ -108,24 +114,9 @@ export default function Dashboard() {
                       You're not invited to any elections yet. <br /> Join an
                       election
                     </p>
-                    {/* <div className="flex flex-col md:flex-row items-center gap-4 mb-20">
-                      <Input
-                        id="inviteCode"
-                        name="inviteCode"
-                        placeholder="Your code"
-                        type="text"
-                        className="w-85 md:w-full  md:mt-0 mt-4"
-                      />
-                      <button
-                        onClick={() => {
-                          console.log("join election");
-                        }}
-                        className="w-40 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
-                      >
-                        Join election
-                      </button>
-                    </div> */}
-                    <JoinElection />
+                    <div className="flex flex-col md:flex-row items-center gap-4 mb-20">
+                      <JoinElection />
+                    </div>
                   </div>
                 )}
               </>
@@ -242,11 +233,11 @@ const JoinElection = () => {
 
   return (
     <>
-      <div className="flex flex-col md:flex-row items-center gap-4 mb-20">
+      <div className="flex flex-col md:flex-row items-center gap-4">
         <Input
           id="inviteCode"
           name="inviteCode"
-          placeholder="Your code"
+          placeholder="Your invite code"
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
           onBlur={() => setInviteCode((v) => v.trim())}
@@ -256,12 +247,12 @@ const JoinElection = () => {
             }
           }}
           type="text"
-          className="w-85 md:w-full  md:mt-0 mt-0"
+          className="w-[calc(100vw-1.25rem-2px)] md:w-full md:mt-0 mt-0"
         />
         <button
           onClick={handgleButtonClick}
           disabled={joinMutation.isPending || !inviteCode.trim()}
-          className="w-40 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+          className="w-full md:w-40 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
         >
           {joinMutation.isPending ? "Joining..." : "Join election"}
         </button>
