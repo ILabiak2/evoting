@@ -50,6 +50,23 @@ export class ElectionService {
         election_type,
         creator,
       } = election;
+
+      const exists = await this.prisma.elections_metadata.findFirst({
+        where: {
+          contract_id: electionId,
+          factory_address: factory_address,
+        },
+        select: { id: true },
+      });
+
+      if (exists) {
+        this.logger.log(
+          `Election metadata already exists for election ${electionId} (id=${exists.id}), skipping create.`,
+        );
+        return;
+      }
+
+      // Create a new metadata row
       await this.prisma.elections_metadata.create({
         data: {
           name,
@@ -88,7 +105,6 @@ export class ElectionService {
   async getUserElections(userId: string) {
     if (!userId) throw new UnauthorizedException('Missing user');
 
-    // Pull election contract ids for this user, scoping to the factory address
     const links = await this.prisma.user_elections.findMany({
       where: {
         user_id: userId,
@@ -141,10 +157,6 @@ export class ElectionService {
       ...election,
       isParticipant,
     };
-  }
-
-  findAll() {
-    return `This action returns all election`;
   }
 
   async generateInvites(
@@ -294,7 +306,7 @@ export class ElectionService {
         },
       });
     } catch (e: any) {
-      // P2025 = record not found (user wasn't a participant) -> treat as success (idempotent)
+      // P2025 = record not found (user wasn't a participant)
       if (e?.code !== 'P2025') {
         throw new BadRequestException(
           'Error while leaving election: ' + e?.message,
@@ -343,7 +355,7 @@ export class ElectionService {
       candidateId?: number;
       candidateIds?: number[];
     },
-    userId: string
+    userId: string,
   ) {
     if (!userId) throw new UnauthorizedException('Missing user');
 

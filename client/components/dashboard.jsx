@@ -21,7 +21,7 @@ export default function Dashboard() {
   // const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col min-h-0">
       <div className="flex h-full w-full flex-1 flex-col gap-2  border-neutral-200 bg-white p-2 md:p-10 md:pt-0 dark:border-neutral-700 dark:bg-neutral-950">
         <div className="flex gap-2">
           <div className="h-15 md:h-20 w-full rounded-lg flex flex-row items-center gap-2">
@@ -57,14 +57,16 @@ export default function Dashboard() {
               </>
             )}
             {user?.role === "creator" && (
-              <button
+              <a
+                href="/election-create"
                 onClick={() => {
+                  e.preventDefault();
                   router.push("/election-create");
                 }}
-                className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+                className="w-60 transform select-none text-center rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
               >
                 Create election
-              </button>
+              </a>
             )}
           </div>
         </div>
@@ -159,7 +161,7 @@ const ElectionInfo = ({
           proximity={64}
           inactiveZone={0.01}
         />
-        <div className="border-0.75 h-full relative flex flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+        <div className="border-0.75 h-full relative flex flex-col justify-between gap-6 overflow-hidden rounded-xl p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
           <div className="relative flex flex-1 flex-col justify-between gap-3">
             <div className="space-y-3 flex flex-col justify-between h-full">
               <div className="flex justify-between">
@@ -182,15 +184,25 @@ const ElectionInfo = ({
               </div>
 
               <div className="flex justify-between">
-                <h3 className="-tracking-4 font-sans text-left text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
+                {/* <h3 className="-tracking-4 font-sans text-left text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
                   Election type: {electionType}
-                </h3>
+                </h3> */}
+                <div className="flex items-center gap-2">
+                  <span
+                    title={electionType}
+                    className="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-1 font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-100"
+                  >
+                    {ElectionType[electionType] ?? electionType}
+                  </span>
+                </div>
 
-                <button
-                  onClick={() => {
+                <a
+                  href={`/election/${address}`}
+                  onClick={(e) => {
+                    e.preventDefault();
                     router.push(`/election/${address}`);
                   }}
-                  className="w-30 transform rounded-lg cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  className="w-30 transform rounded-lg select-none cursor-pointer bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 >
                   {userRole === "creator"
                     ? "Manage"
@@ -198,7 +210,7 @@ const ElectionInfo = ({
                       ? "Vote"
                       : "Results"}
                   &rarr;
-                </button>
+                </a>
               </div>
             </div>
           </div>

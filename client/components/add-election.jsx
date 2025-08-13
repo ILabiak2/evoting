@@ -125,7 +125,12 @@ export default function AddElection() {
               name="name"
               placeholder="Parlament Election"
               value={electionName}
-              onChange={(e) => setElectionName(e.target.value)}
+              onChange={(e) => {
+                setLoading(false);
+                setErrorMessage("");
+                setErrors([]);
+                setElectionName(e.target.value);
+              }}
               type="text"
             />
           </LabelInputContainer>
@@ -231,15 +236,32 @@ export default function AddElection() {
               )}
             </div>
             <div className="flex flex-row mt-2">
-              <p>Transaction:&nbsp;</p>
-              <a
-                className="underline text-primary"
-                href={`https://sepolia.arbiscan.io/tx/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {txHash.slice(0, 4)}...{txHash.slice(-4)}
-              </a>
+              {!statusData?.confirmed ? (
+                <>
+                  <p>Transaction:&nbsp;</p>
+                  <a
+                    className="underline text-primary"
+                    href={`https://sepolia.arbiscan.io/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {txHash.slice(0, 4)}...{txHash.slice(-4)}
+                  </a>
+                </>
+              ) : (
+                <>
+                  <p>Election:&nbsp;</p>
+                  <a
+                    className="underline text-primary"
+                    href={`election/${statusData.contractAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {statusData.contractAddress.slice(0, 4)}...
+                    {statusData.contractAddress.slice(-4)}
+                  </a>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -266,7 +288,11 @@ export default function AddElection() {
               (txHash && !statusData?.confirmed)
             }
           >
-            Create election &rarr;
+            {loading ||
+            createElection.isPending ||
+            (txHash && !statusData?.confirmed)
+              ? " Loading..."
+              : "Create election →"}
             <BottomGradient />
           </button>
 

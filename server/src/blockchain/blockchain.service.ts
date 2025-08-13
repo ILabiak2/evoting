@@ -237,7 +237,7 @@ export class BlockchainService {
 
   async checkElectionCreated(
     txHash: string,
-  ): Promise<{ confirmed: boolean; electionId?: number }> {
+  ): Promise<{ confirmed: boolean; electionId?: number, contractAddress?: string }> {
     const receipt = await this.provider.getTransactionReceipt(txHash);
     if (!receipt || (await receipt.confirmations()) === 0) {
       return { confirmed: false };
@@ -252,9 +252,14 @@ export class BlockchainService {
 
     if (!event) return { confirmed: false };
 
+    const electionId = Number(event.args?.id);
+    const election = await this.contract.getElection(electionId);
+    const contractAddress = election?.contractAddress?.toString?.() ?? election?.contractAddress;
+  
     return {
       confirmed: true,
-      electionId: Number(event.args?.id),
+      electionId,
+      contractAddress,
     };
   }
 
@@ -413,7 +418,6 @@ export class BlockchainService {
           value,
         );
 
-        // 3) Creator (owner) authorizes the voter (auth signature) — sign with creator's wallet, not admin
         const creatorWalletRow = await this.prisma.wallets.findFirst({
           where: {
             public_address: {
@@ -471,13 +475,5 @@ export class BlockchainService {
       console.error(err);
       throw new Error(msg);
     }
-  }
-
-  async writeSomething() {
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, this.provider);
-    const contractWithSigner = this.contract.connect(wallet);
-    // const tx = await contractWithSigner.someFunction(...args);
-    // await tx.wait();
-    // return tx.hash;
   }
 }
