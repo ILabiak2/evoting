@@ -59,7 +59,7 @@ export default function Dashboard() {
             {user?.role === "creator" && (
               <a
                 href="/election-create"
-                onClick={() => {
+                onClick={(e) => {
                   e.preventDefault();
                   router.push("/election-create");
                 }}
