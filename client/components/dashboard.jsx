@@ -78,18 +78,20 @@ export default function Dashboard() {
           {!isLoading ? (
             elections?.length > 0 ? (
               <ul className="w-full grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {elections.map((election) => (
-                  <ElectionInfo
-                    key={election.id}
-                    title={election.name}
-                    isActive={election.isActive}
-                    votes={election.totalVotes}
-                    userRole={user?.role}
-                    electionType={ElectionType[election.electionType]}
-                    address={election.contractAddress}
-                    router={router}
-                  />
-                ))}
+                {[...elections]
+                  .sort((a, b) => Number(b.id) - Number(a.id))
+                  .map((election) => (
+                    <ElectionInfo
+                      key={election.id}
+                      title={election.name}
+                      isActive={election.isActive}
+                      votes={election.totalVotes}
+                      userRole={user?.role}
+                      electionType={ElectionType[election.electionType]}
+                      address={election.contractAddress}
+                      router={router}
+                    />
+                  ))}
               </ul>
             ) : (
               <>
@@ -170,25 +172,19 @@ const ElectionInfo = ({
                   </h3>
                   <span
                     className={`ml-3 inline-block h-3 w-3 rounded-full
-                                            ${
-                                              isActive
-                                                ? "bg-green-500 animate-pulse shadow-[0_0_12px_4px_rgba(34,197,94,0.7)]"
-                                                : "bg-red-500 shadow-[0_0_12px_4px_rgba(239,68,68,0.7)]"
-                                            }`}
+                      ${
+                        isActive
+                          ? "bg-green-500 animate-pulse shadow-[0_0_12px_4px_rgba(34,197,94,0.7)]"
+                          : "bg-red-500 shadow-[0_0_12px_4px_rgba(239,68,68,0.7)]"
+                      }`}
                   ></span>
                 </div>
               </div>
 
               <div className="flex justify-between">
-                {userRole === "user" ? (
-                  <h3 className="-tracking-4 font-sans text-left text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                    Election type: {electionType}
-                  </h3>
-                ) : (
-                  <h3 className="-tracking-4 font-sans text-center text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                    Votes: {votes}
-                  </h3>
-                )}
+                <h3 className="-tracking-4 font-sans text-left text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
+                  Election type: {electionType}
+                </h3>
 
                 <button
                   onClick={() => {

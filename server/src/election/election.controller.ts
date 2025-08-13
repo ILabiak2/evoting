@@ -33,9 +33,14 @@ export class ElectionController {
     return this.electionService.create(createElectionDto, user.userId);
   }
 
-  @Get('status/:txHash')
-  async checkStatus(@Param('txHash') txHash: string) {
-    return this.electionService.checkStatus(txHash);
+  @Get('create-status/:txHash')
+  async checkElectionStatus(@Param('txHash') txHash: string) {
+    return this.electionService.checkElectionStatus(txHash);
+  }
+
+  @Get('vote-status/:txHash')
+  async checkVoteStatus(@Param('txHash') txHash: string) {
+    return this.electionService.checkVoteStatus(txHash);
   }
 
   @Get()
@@ -87,5 +92,22 @@ export class ElectionController {
       throw new BadRequestException('Invite code is required');
     }
     return this.electionService.joinPrivateElection(code.trim(), userId);
+  }
+
+  @Post(':address/vote')
+  async vote(
+    @Param('address') address: string,
+    @Body()
+    body: { candidateId?: number; candidateIds?: number[] },
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.voteInElectionWithSignature(
+      {
+        electionAddress: address,
+        candidateId: body.candidateId,
+        candidateIds: body.candidateIds,
+      },
+      userId,
+    );
   }
 }

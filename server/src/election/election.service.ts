@@ -12,7 +12,6 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { use } from 'passport';
 
 @Injectable()
 export class ElectionService {
@@ -67,13 +66,18 @@ export class ElectionService {
     }
   }
 
-  async checkStatus(txHash: string) {
+  async checkElectionStatus(txHash: string) {
     const status = await this.blockchain.checkElectionCreated(txHash);
     if (status.confirmed) {
       this.addElectionMetadata(status.electionId).catch((err) => {
         this.logger.error('Failed to add election metadata', err);
       });
     }
+    return status;
+  }
+
+  async checkVoteStatus(txHash: string) {
+    const status = await this.blockchain.checkUserVoted(txHash);
     return status;
   }
 
@@ -301,10 +305,7 @@ export class ElectionService {
     return { left: true };
   }
 
-  async joinPrivateElection(
-    code: string,
-    userId: string,
-  ) {
+  async joinPrivateElection(code: string, userId: string) {
     if (!userId) throw new UnauthorizedException('Missing user');
 
     const invite = await this.prisma.invites.findFirst({
@@ -334,5 +335,35 @@ export class ElectionService {
     });
 
     return { joined: true };
+  }
+
+  async voteInElectionWithSignature(
+    dto: {
+      electionAddress: string;
+      candidateId?: number;
+      candidateIds?: number[];
+    },
+    userId: string
+  ) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    const { electionAddress, candidateId, candidateIds } = dto;
+    if (!electionAddress) {
+      throw new BadRequestException('electionAddress is required');
+    }
+
+    try {
+      const { txHash } = await this.blockchain.voteInElectionWithSignature({
+        userId,
+        electionAddress,
+        candidateId,
+        candidateIds,
+      });
+      return { txHash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(`${msg}`);
+    }
   }
 }

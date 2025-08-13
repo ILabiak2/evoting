@@ -5,7 +5,7 @@ export const useElectionStatus = (txHash) => {
     queryKey: ['election-status', txHash],
     queryFn: async () => {
       if (!txHash) throw new Error('No transaction hash provided');
-      const res = await fetch(`/api/server/election/status/${txHash}`);
+      const res = await fetch(`/api/server/election/create-status/${txHash}`);
       if (!res.ok) throw new Error('Failed to fetch status');
       return res.json();
     },

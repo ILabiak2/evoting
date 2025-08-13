@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ethers } from 'ethers';
 import { VotingFactory } from './_types/VotingFactory';
 import * as VotingFactoryABI from './_abi/VotingFactory.json';
+// import * as PublicSingleElectionAbi from './_abi/PublicElection.json';
+import { VOTE_REGISTRY } from './types/vote-schemas';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { CreateElectionParams } from './types/election.interface';
 import {
   ElectionType,
   ElectionTypeFromNumber,
 } from './types/election-type.enum';
+import { PrismaService } from '@/prisma/prisma.service';
 
 declare global {
   interface BigInt {
@@ -26,7 +34,10 @@ export class BlockchainService {
   private adminWallet: ethers.Wallet;
   // private contractWithSigner: ethers.Contract;
 
-  constructor(private readonly azureKeyVaultService: AzureKeyVaultService) {
+  constructor(
+    private readonly azureKeyVaultService: AzureKeyVaultService,
+    private readonly prisma: PrismaService,
+  ) {
     const rpcUrl = process.env.ARBITRUM_SEPOLIA_RPC_URL;
     const contractAddress = process.env.CONTRACT_ADDRESS;
 
@@ -164,6 +175,7 @@ export class BlockchainService {
           console.error('Election creation failed:', error);
           throw new Error('Failed to create election on-chain');
         }
+        break;
       case ElectionType.PRIVATE_SINGLE_CHOICE:
         try {
           const tx =
@@ -181,7 +193,46 @@ export class BlockchainService {
           console.error('Election creation failed:', error);
           throw new Error('Failed to create election on-chain');
         }
+        break;
     }
+  }
+
+  async checkUserVoted(txHash: string): Promise<{
+    confirmed: boolean;
+    electionId?: number;
+    candidateId?: number;
+    candidateIds?: number[];
+    voter?: string;
+  }> {
+    const voteCastSig1 = 'VoteCast(uint256,uint256,address)';
+    // const voteCastSig2 = "VoteCast(uint256,uint256[],address)";
+    const topic0Single = ethers.id(voteCastSig1);
+    // const topic0Multi  = ethers.id(voteCastSig2);
+
+    const receipt = await this.provider.getTransactionReceipt(txHash);
+    if (!receipt || (await receipt.confirmations()) === 0) {
+      return { confirmed: false };
+    }
+
+    const logs = receipt.logs.filter((log) => log.topics[0] === topic0Single);
+
+    if (!logs.length) return { confirmed: false };
+
+    const log = logs[0];
+    const abiCoder = new ethers.AbiCoder();
+
+    const electionId = Number(ethers.getBigInt(log.topics[1]));
+
+    const [candidateId, voter] = abiCoder.decode(
+      ['uint256', 'address'],
+      log.data,
+    );
+    return {
+      confirmed: true,
+      electionId,
+      candidateId: Number(candidateId),
+      voter,
+    };
   }
 
   async checkElectionCreated(
@@ -262,6 +313,163 @@ export class BlockchainService {
       throw new NotFoundException(
         'Failed to get election data by address: ' + error.shortMessage,
       );
+    }
+  }
+
+  async voteInElectionWithSignature(params: {
+    userId: string;
+    electionAddress: string;
+    candidateId?: number;
+    candidateIds?: number[];
+  }) {
+    const { userId, electionAddress, candidateId, candidateIds } = params;
+
+    const {
+      electionType,
+      id: electionId,
+      creator,
+    } = await this.getElectionData(electionAddress, userId);
+
+    const cfg = VOTE_REGISTRY[electionType as any];
+    if (!cfg) {
+      throw new Error(`Unsupported election type: ${electionType}`);
+    }
+
+    const vaultKeyName = `wallet-key-${userId}`;
+    const privateKey =
+      await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
+    const voterWallet = new ethers.Wallet(privateKey, this.provider);
+
+    const voteTypes = cfg.types;
+    let value, voteSignature, authSignature;
+
+    const network = await this.provider.getNetwork();
+    const chainId = Number(network.chainId);
+
+    const domain = {
+      name: '',
+      version: '1',
+      chainId,
+      verifyingContract: electionAddress,
+    };
+
+    const electionContract = new ethers.Contract(
+      electionAddress,
+      cfg.abi as any,
+      this.adminWallet,
+    );
+    domain.name = cfg.domainName;
+
+    switch (electionType) {
+      case 'public_single_choice':
+        value = {
+          electionId,
+          candidateId,
+          voter: voterWallet.address,
+        };
+
+        voteSignature = await voterWallet.signTypedData(
+          domain,
+          voteTypes,
+          value,
+        );
+        break;
+      case 'private_single_choice':
+        value = {
+          electionId,
+          candidateId,
+          voter: voterWallet.address,
+        };
+
+        {
+          const meta = await this.prisma.elections_metadata.findFirst({
+            where: {
+              election_address: electionAddress,
+              factory_address: process.env.CONTRACT_ADDRESS,
+            },
+            select: { id: true },
+          });
+          if (!meta) throw new NotFoundException('Election metadata not found');
+
+          const membership = await this.prisma.user_elections.findUnique({
+            where: {
+              user_id_election_id: {
+                user_id: userId,
+                election_id: meta.id,
+              },
+            },
+            select: { id: true },
+          });
+          if (!membership) {
+            throw new ForbiddenException(
+              'You are not permitted to vote in this private election',
+            );
+          }
+        }
+
+        voteSignature = await voterWallet.signTypedData(
+          domain,
+          voteTypes,
+          value,
+        );
+
+        // 3) Creator (owner) authorizes the voter (auth signature) — sign with creator's wallet, not admin
+        const creatorWalletRow = await this.prisma.wallets.findFirst({
+          where: {
+            public_address: {
+              equals: creator,
+              mode: 'insensitive',
+            },
+          },
+          select: { vault_key_name: true },
+        });
+        if (!creatorWalletRow?.vault_key_name) {
+          throw new NotFoundException(
+            'Creator wallet not found for this election',
+          );
+        }
+        const creatorPrivateKey = await this.azureKeyVaultService.getPrivateKey(
+          creatorWalletRow.vault_key_name,
+        );
+        const creatorOwnerWallet = new ethers.Wallet(
+          creatorPrivateKey,
+          this.provider,
+        );
+
+        const authTypes = {
+          Auth: [
+            { name: 'electionId', type: 'uint256' },
+            { name: 'voter', type: 'address' },
+          ],
+        };
+        const authValue = {
+          electionId: electionId,
+          voter: voterWallet.address,
+        };
+
+        authSignature = await creatorOwnerWallet.signTypedData(
+          domain,
+          authTypes,
+          authValue,
+        );
+        break;
+      default:
+    }
+
+    try {
+      const args = cfg.buildAgs({
+        candidateId: value.candidateId,
+        voter: value.voter,
+        voteSignature,
+        authSignature,
+      });
+      const tx = await electionContract[cfg.method](...args);
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      console.error(err);
+      throw new Error(msg);
     }
   }
 
