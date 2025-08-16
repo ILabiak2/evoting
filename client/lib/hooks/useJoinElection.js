@@ -22,7 +22,6 @@ export const useJoinPublicElection = () => {
       return res.json(); // { joined: true }
     },
     onSuccess: (_data, address) => {
-      //   qc.invalidateQueries({ queryKey: ["userElections"] });
       qc.invalidateQueries({ queryKey: ["election", address] });
     },
   });

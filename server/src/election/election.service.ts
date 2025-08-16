@@ -94,8 +94,11 @@ export class ElectionService {
   }
 
   async checkVoteStatus(txHash: string) {
-    const status = await this.blockchain.checkUserVoted(txHash);
-    return status;
+    return await this.blockchain.checkUserVoted(txHash);
+  }
+
+  async checkTxStatus(txHash: string) {
+    return await this.blockchain.getTransactionStatus(txHash);
   }
 
   getCreatorElections(userId: string) {
@@ -376,6 +379,38 @@ export class ElectionService {
       const msg =
         err?.shortMessage || err?.reason || err?.message || String(err);
       throw new BadRequestException(`${msg}`);
+    }
+  }
+
+  async startElection(electionAddress: string, userId: string) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    try {
+      const { txHash } = await this.blockchain.startElection(
+        electionAddress,
+        userId,
+      );
+      return { txHash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
+    }
+  }
+
+  async stopElection(electionAddress: string, userId: string) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    try {
+      const { txHash } = await this.blockchain.stopElection(
+        electionAddress,
+        userId,
+      );
+      return { txHash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
     }
   }
 }

@@ -43,6 +43,11 @@ export class ElectionController {
     return this.electionService.checkVoteStatus(txHash);
   }
 
+  @Get('status/:txHash')
+  async checkTxStatus(@Param('txHash') txHash: string) {
+    return this.electionService.checkTxStatus(txHash);
+  }
+
   @Get()
   findAll(@User() user) {
     if (user.role === 'creator') {
@@ -81,6 +86,28 @@ export class ElectionController {
     @User('userId') userId: string,
   ) {
     return this.electionService.leavePublicElection(address, userId);
+  }
+
+  @Post(':address/start')
+  async startElection(
+    @Param('address', EthAddressPipe) address: string,
+    @User() user: any,
+  ) {
+    if (user.role !== 'creator') {
+      throw new ForbiddenException('You are not authorized to start elections');
+    }
+    return this.electionService.startElection(address, user.userId);
+  }
+
+  @Post(':address/stop')
+  async stopElection(
+    @Param('address', EthAddressPipe) address: string,
+    @User() user: any,
+  ) {
+    if (user.role !== 'creator') {
+      throw new ForbiddenException('You are not authorized to stop elections');
+    }
+    return this.electionService.stopElection(address, user.userId);
   }
 
   @Post('join-with-invite')

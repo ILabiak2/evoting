@@ -52,7 +52,6 @@ export class BlockchainService {
       VotingFactoryABI as any,
       this.provider,
     ) as unknown as VotingFactory;
-    // this.contractWithSigner = this.contract.connect(this.adminWallet);
   }
 
   formatElectionData(election: any) {
@@ -109,18 +108,16 @@ export class BlockchainService {
     };
   }
 
-  async getSigner(userId: string) {
+  async getUserWallet(userId: string) {
     const vaultKeyName = `wallet-key-${userId}`;
     const privateKey =
       await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
-    const userWallet = new ethers.Wallet(privateKey, this.provider);
-
-    return this.contract.connect(userWallet);
+    return new ethers.Wallet(privateKey, this.provider);
   }
 
-  async getSomething() {
-    const result = await this.contract.getAddress();
-    return result;
+  async getSigner(userId: string) {
+    const userWallet = await this.getUserWallet(userId);
+    return this.contract.connect(userWallet);
   }
 
   async createElectionWithSignature(params: CreateElectionParams) {
@@ -132,10 +129,7 @@ export class BlockchainService {
       voterLimit = 0,
       candidateNames,
     } = params;
-    const vaultKeyName = `wallet-key-${userId}`;
-    const privateKey =
-      await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
-    const userWallet = new ethers.Wallet(privateKey);
+    const userWallet = await this.getUserWallet(userId);
     const contractWithAdminSigner = this.contract.connect(this.adminWallet);
     const domain = await this.getDomain();
 
@@ -175,7 +169,6 @@ export class BlockchainService {
           console.error('Election creation failed:', error);
           throw new Error('Failed to create election on-chain');
         }
-        break;
       case ElectionType.PRIVATE_SINGLE_CHOICE:
         try {
           const tx =
@@ -193,8 +186,22 @@ export class BlockchainService {
           console.error('Election creation failed:', error);
           throw new Error('Failed to create election on-chain');
         }
-        break;
     }
+  }
+
+  private async getConfirmedReceipt(
+    txHash: string,
+  ): Promise<ethers.TransactionReceipt | null> {
+    const receipt = await this.provider.getTransactionReceipt(txHash);
+    if (!receipt || (await receipt.confirmations()) === 0) {
+      return null;
+    }
+    return receipt;
+  }
+
+  async getTransactionStatus(txHash: string) {
+    const receipt = await this.getConfirmedReceipt(txHash);
+    return { confirmed: !!receipt };
   }
 
   async checkUserVoted(txHash: string): Promise<{
@@ -209,13 +216,12 @@ export class BlockchainService {
     const topic0Single = ethers.id(voteCastSig1);
     // const topic0Multi  = ethers.id(voteCastSig2);
 
-    const receipt = await this.provider.getTransactionReceipt(txHash);
-    if (!receipt || (await receipt.confirmations()) === 0) {
+    const receipt = await this.getConfirmedReceipt(txHash);
+    if (!receipt) {
       return { confirmed: false };
     }
 
     const logs = receipt.logs.filter((log) => log.topics[0] === topic0Single);
-
     if (!logs.length) return { confirmed: false };
 
     const log = logs[0];
@@ -235,11 +241,13 @@ export class BlockchainService {
     };
   }
 
-  async checkElectionCreated(
-    txHash: string,
-  ): Promise<{ confirmed: boolean; electionId?: number, contractAddress?: string }> {
-    const receipt = await this.provider.getTransactionReceipt(txHash);
-    if (!receipt || (await receipt.confirmations()) === 0) {
+  async checkElectionCreated(txHash: string): Promise<{
+    confirmed: boolean;
+    electionId?: number;
+    contractAddress?: string;
+  }> {
+    const receipt = await this.getConfirmedReceipt(txHash);
+    if (!receipt) {
       return { confirmed: false };
     }
 
@@ -249,13 +257,13 @@ export class BlockchainService {
       receipt.blockNumber,
     );
     const event = events.find((e) => e.transactionHash === txHash);
-
     if (!event) return { confirmed: false };
 
     const electionId = Number(event.args?.id);
     const election = await this.contract.getElection(electionId);
-    const contractAddress = election?.contractAddress?.toString?.() ?? election?.contractAddress;
-  
+    const contractAddress =
+      election?.contractAddress?.toString?.() ?? election?.contractAddress;
+
     return {
       confirmed: true,
       electionId,
@@ -265,9 +273,7 @@ export class BlockchainService {
 
   async getCreatorElections(userId: string) {
     const contractWithSigner = await this.getSigner(userId);
-
     const electionsRaw = await contractWithSigner.getMyElections();
-
     const elections = electionsRaw.map((election: any) =>
       this.formatElectionData(election),
     );
@@ -340,10 +346,7 @@ export class BlockchainService {
       throw new Error(`Unsupported election type: ${electionType}`);
     }
 
-    const vaultKeyName = `wallet-key-${userId}`;
-    const privateKey =
-      await this.azureKeyVaultService.getPrivateKey(vaultKeyName);
-    const voterWallet = new ethers.Wallet(privateKey, this.provider);
+    const voterWallet = await this.getUserWallet(userId);
 
     const voteTypes = cfg.types;
     let value, voteSignature, authSignature;
@@ -468,6 +471,74 @@ export class BlockchainService {
         authSignature,
       });
       const tx = await electionContract[cfg.method](...args);
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      console.error(err);
+      throw new Error(msg);
+    }
+  }
+
+  async startElection(address: string, userId: string) {
+    const creatorWallet = await this.getUserWallet(userId);
+
+    const { electionType, isActive, creator } = await this.getElectionData(
+      address,
+      userId,
+    );
+
+    if (isActive) throw new Error('Election has already started');
+    if (creator != creatorWallet.address)
+      throw new ForbiddenException('Only creator can start the election');
+
+    const cfg = VOTE_REGISTRY[electionType as any];
+    if (!cfg) {
+      throw new Error(`Unsupported election type: ${electionType}`);
+    }
+
+    const electionContract = new ethers.Contract(
+      address,
+      cfg.abi as any,
+      this.adminWallet,
+    );
+
+    try {
+      const tx = await electionContract.startElection();
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      console.error(err);
+      throw new Error(msg);
+    }
+  }
+
+  async stopElection(address: string, userId: string) {
+    const creatorWallet = await this.getUserWallet(userId);
+
+    const { electionType, isActive, creator } = await this.getElectionData(
+      address,
+      userId,
+    );
+
+    if (!isActive) throw new Error('Election has already ended');
+    if (creator != creatorWallet.address)
+      throw new ForbiddenException('Only creator can stop the election');
+
+    const cfg = VOTE_REGISTRY[electionType as any];
+    if (!cfg) {
+      throw new Error(`Unsupported election type: ${electionType}`);
+    }
+
+    const electionContract = new ethers.Contract(
+      address,
+      cfg.abi as any,
+      this.adminWallet,
+    );
+
+    try {
+      const tx = await electionContract.endElection();
       return { txHash: tx.hash };
     } catch (err: any) {
       const msg =

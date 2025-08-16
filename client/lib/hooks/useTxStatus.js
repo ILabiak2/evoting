@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useVoteStatus = (txHash, electionAddress) => {
+export const useTxStatus = (txHash, electionAddress) => {
   const qc = useQueryClient();
 
   const query = useQuery({
     queryKey: ["election-status", txHash],
     queryFn: async () => {
       if (!txHash) throw new Error("No transaction hash provided");
-      const res = await fetch(`/api/server/election/vote-status/${txHash}`);
+      const res = await fetch(`/api/server/election/status/${txHash}`);
       if (!res.ok) throw new Error("Failed to fetch status");
       return res.json();
     },
@@ -21,12 +21,12 @@ export const useVoteStatus = (txHash, electionAddress) => {
     refetchOnReconnect: false,
   });
 
-  // React to confirmation changes
   useEffect(() => {
     if (query.data?.confirmed && electionAddress) {
-      // Mark stale and immediately refetch active instances of this election query
-      qc.invalidateQueries({ queryKey: ["election", electionAddress], exact: true });
-      // qc.refetchQueries({ queryKey: ["election", electionAddress], type: "active", exact: true });
+      qc.invalidateQueries({
+        queryKey: ["election", electionAddress],
+        exact: true,
+      });
     }
   }, [query.data?.confirmed, electionAddress, qc]);
 
