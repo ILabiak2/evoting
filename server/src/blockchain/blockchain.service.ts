@@ -60,6 +60,7 @@ export class BlockchainService {
     const {
       id,
       name,
+      createdAt,
       startTime,
       endTime,
       creator,
@@ -82,6 +83,7 @@ export class BlockchainService {
     return {
       id,
       name,
+      createdAt,
       startTime: Number(startTime),
       endTime: Number(endTime),
       creator,

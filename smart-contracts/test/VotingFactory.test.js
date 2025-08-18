@@ -465,6 +465,75 @@ describe("VotingFactory", function () {
     });
   });
 
+  describe("removeCandidate", function () {
+    it("Видалення кандидата", async function () {
+      const tx = await voting.createPrivateElection(
+        "Голосування 1",
+        ["Кандидат 1", "Кандидат 2", "Кандидат 3"],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      const electionAddress = event?.args.contractAddress;
+
+      const election = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      let electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.name).to.equal("Голосування 1");
+      expect(electionData.fullInfo.coreData.id).to.equal(0);
+      expect(electionData.fullInfo.coreData.candidateCount).to.equal(3);
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 1"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 2"
+      );
+      expect(electionData.fullInfo.coreData.candidates[2].name).to.equal(
+        "Кандидат 3"
+      );
+      expect(electionData.fullInfo.coreData.candidates.length).to.equal(3);
+    
+      await election.removeCandidate(1)
+
+      electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.candidateCount).to.equal(2);
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 1"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 3"
+      );
+
+      await election.startElection();
+      await expect(
+        election.removeCandidate(1)
+      ).to.be.revertedWith("Election already started");
+
+      electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 1"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 3"
+      );
+
+      await election.endElection();
+      await expect(
+        election.removeCandidate(0)
+      ).to.be.revertedWith("Election already started");
+    });
+  });
+
   describe("addCandidates", function () {
     let electionAddress;
     let election;

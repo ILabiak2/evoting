@@ -11,6 +11,7 @@ library ElectionMetadata {
     struct ElectionWithCandidates {
         uint256 id;
         string name;
+        uint256 createdAt;
         uint256 startTime;
         uint256 endTime;
         address creator;

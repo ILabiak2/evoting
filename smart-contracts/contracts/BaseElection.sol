@@ -18,6 +18,7 @@ abstract contract BaseElection {
     bool public endedManually;
     uint256 public voterLimit;
     uint256 public voterCount;
+    uint256 public createdAt;
 
     struct Candidate {
         uint256 id;
@@ -38,7 +39,17 @@ abstract contract BaseElection {
         uint256 candidateId,
         address voter
     );
-    event CandidateRenamed(uint256 indexed electionId, uint256 indexed candidateId, string oldName, string newName);
+    event CandidateRenamed(
+        uint256 indexed electionId,
+        uint256 indexed candidateId,
+        string oldName,
+        string newName
+    );
+    event CandidateRemoved(
+        uint256 indexed electionId,
+        uint256 indexed candidateId,
+        string name
+    );
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
@@ -63,9 +74,12 @@ abstract contract BaseElection {
     }
 
     modifier onlyBeforeStart() {
-    require(!isActive && startTime == 0 && endTime == 0, "Election already started");
-    _;
-}
+        require(
+            !isActive && startTime == 0 && endTime == 0,
+            "Election already started"
+        );
+        _;
+    }
 
     function __BaseElection_init(
         string memory _name,
@@ -81,6 +95,7 @@ abstract contract BaseElection {
         creator = _creator;
         electionId = _electionId;
         voterLimit = _voterLimit;
+        createdAt = block.timestamp;
 
         if (_startImmediately) {
             startTime = block.timestamp;
@@ -127,32 +142,50 @@ abstract contract BaseElection {
         _addCandidates(_names);
     }
 
-    function editCandidateName(uint256 candidateId, string calldata newName)
-    external
-    onlyCreatorOrAdmin(electionId)
-    onlyBeforeStart
-{
-    require(candidateId < candidates.length, "Invalid candidate");
-    require(bytes(newName).length > 0, "Empty name");
+    function editCandidateName(
+        uint256 candidateId,
+        string calldata newName
+    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
+        require(candidateId < candidates.length, "Invalid candidate");
+        require(bytes(newName).length > 0, "Empty name");
 
-    Candidate storage c = candidates[candidateId];
+        Candidate storage c = candidates[candidateId];
 
-    if (keccak256(bytes(c.name)) == keccak256(bytes(newName))) {
-        return;
+        if (keccak256(bytes(c.name)) == keccak256(bytes(newName))) {
+            return;
+        }
+
+        bytes32 oldHash = keccak256(abi.encodePacked(c.name));
+        bytes32 newHash = keccak256(abi.encodePacked(newName));
+        require(!candidateNameExists[newHash], "Duplicate candidate name");
+
+        candidateNameExists[oldHash] = false;
+        candidateNameExists[newHash] = true;
+
+        string memory oldName = c.name;
+        c.name = newName;
+
+        emit CandidateRenamed(electionId, candidateId, oldName, newName);
     }
 
-    bytes32 oldHash = keccak256(abi.encodePacked(c.name));
-    bytes32 newHash = keccak256(abi.encodePacked(newName));
-    require(!candidateNameExists[newHash], "Duplicate candidate name");
+    function removeCandidate(
+        uint256 candidateId
+    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
+        require(candidateId < candidates.length, "Invalid candidate");
 
-    candidateNameExists[oldHash] = false;
-    candidateNameExists[newHash] = true;
+        Candidate memory c = candidates[candidateId];
+        bytes32 nameHash = keccak256(abi.encodePacked(c.name));
+        candidateNameExists[nameHash] = false;
+        emit CandidateRemoved(electionId, candidateId, c.name);
 
-    string memory oldName = c.name;
-    c.name = newName;
+        // Shift candidates array by replacing with last element
+        for (uint256 i = candidateId; i < candidates.length - 1; i++) {
+            candidates[i] = candidates[i + 1];
+            candidates[i].id = i;
+        }
 
-    emit CandidateRenamed(electionId, candidateId, oldName, newName);
-}
+        candidates.pop();
+    }
 
     function isElectionActive() public view returns (bool) {
         if (endedManually) return false;
@@ -183,9 +216,11 @@ abstract contract BaseElection {
         return candidates;
     }
 
-    function getVotedCandidateIds(address user) external view returns (uint256[] memory) {
-    return votedCandidates[user];
-}
+    function getVotedCandidateIds(
+        address user
+    ) external view returns (uint256[] memory) {
+        return votedCandidates[user];
+    }
 
     function getCoreElectionData()
         external
@@ -206,6 +241,7 @@ abstract contract BaseElection {
             ElectionMetadata.ElectionWithCandidates({
                 id: electionId,
                 name: name,
+                createdAt: createdAt,
                 creator: creator,
                 startTime: startTime,
                 endTime: endTime,
