@@ -38,6 +38,7 @@ abstract contract BaseElection {
         uint256 candidateId,
         address voter
     );
+    event CandidateRenamed(uint256 indexed electionId, uint256 indexed candidateId, string oldName, string newName);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
@@ -62,7 +63,7 @@ abstract contract BaseElection {
     }
 
     modifier onlyBeforeStart() {
-    require(!isActive && startTime == 0 && !endedManually, "Election already started");
+    require(!isActive && startTime == 0 && endTime == 0, "Election already started");
     _;
 }
 
@@ -125,6 +126,33 @@ abstract contract BaseElection {
     ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
         _addCandidates(_names);
     }
+
+    function editCandidateName(uint256 candidateId, string calldata newName)
+    external
+    onlyCreatorOrAdmin(electionId)
+    onlyBeforeStart
+{
+    require(candidateId < candidates.length, "Invalid candidate");
+    require(bytes(newName).length > 0, "Empty name");
+
+    Candidate storage c = candidates[candidateId];
+
+    if (keccak256(bytes(c.name)) == keccak256(bytes(newName))) {
+        return;
+    }
+
+    bytes32 oldHash = keccak256(abi.encodePacked(c.name));
+    bytes32 newHash = keccak256(abi.encodePacked(newName));
+    require(!candidateNameExists[newHash], "Duplicate candidate name");
+
+    candidateNameExists[oldHash] = false;
+    candidateNameExists[newHash] = true;
+
+    string memory oldName = c.name;
+    c.name = newName;
+
+    emit CandidateRenamed(electionId, candidateId, oldName, newName);
+}
 
     function isElectionActive() public view returns (bool) {
         if (endedManually) return false;

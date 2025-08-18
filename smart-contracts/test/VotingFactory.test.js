@@ -401,6 +401,70 @@ describe("VotingFactory", function () {
     });
   });
 
+  describe("editCandidate", function () {
+    it("Змінює ім’я кандидата", async function () {
+      const tx = await voting.createPrivateElection(
+        "Голосування 1",
+        ["Кандидат 1", "Кандидат 2"],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      const electionAddress = event?.args.contractAddress;
+
+      const election = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      let electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.name).to.equal("Голосування 1");
+      expect(electionData.fullInfo.coreData.id).to.equal(0);
+      expect(electionData.fullInfo.coreData.candidateCount).to.equal(2);
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 1"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 2"
+      );
+      expect(electionData.fullInfo.coreData.candidates.length).to.equal(2);
+
+      await election.editCandidateName(0, "Кандидат 101");
+
+      electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 101"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 2"
+      );
+
+      await election.startElection();
+      await expect(
+        election.editCandidateName(1, "Кандидат 202")
+      ).to.be.revertedWith("Election already started");
+      electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 101"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 2"
+      );
+
+      await election.endElection();
+      await expect(
+        election.editCandidateName(1, "Кандидат 202")
+      ).to.be.revertedWith("Election already started");
+    });
+  });
+
   describe("addCandidates", function () {
     let electionAddress;
     let election;

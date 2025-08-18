@@ -547,4 +547,52 @@ export class BlockchainService {
       throw new Error(msg);
     }
   }
+
+  async editCandidate(
+    address: string,
+    candidateId: number,
+    newName: string,
+    userId: string,
+  ) {
+    const creatorWallet = await this.getUserWallet(userId);
+
+    const { electionType, isActive, startTime, endTime, creator, candidates } =
+      await this.getElectionData(address, userId);
+
+    if (isActive)
+      throw new Error(`You can't change candidate name in ongoing election`);
+    if (endTime > 0)
+      throw new Error(`You can't change candidate name in finished election`);
+    if (creator != creatorWallet.address)
+      throw new ForbiddenException('Only creator can stop the election');
+    if (!candidates[candidateId])
+      throw new Error(
+        `There is no candidate with id ${candidateId} in this election`,
+      );
+    if (candidates[candidateId]?.name == newName)
+      throw new Error(
+        `You can't change candidate's name to same one`,
+      );
+
+    const cfg = VOTE_REGISTRY[electionType as any];
+    if (!cfg) {
+      throw new Error(`Unsupported election type: ${electionType}`);
+    }
+
+    const electionContract = new ethers.Contract(
+      address,
+      cfg.abi as any,
+      this.adminWallet,
+    );
+
+    try {
+      const tx = await electionContract.editCandidateName(candidateId, newName);
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      console.error(err);
+      throw new Error(msg);
+    }
+  }
 }

@@ -137,4 +137,19 @@ export class ElectionController {
       userId,
     );
   }
+
+  @Patch(':address/candidates/edit')
+  async editCandidate(
+    @Param('address') address: string,
+    @Body()
+    body: { candidateId: number; newName: string },
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.editCandidate(
+      address,
+      body.candidateId,
+      body.newName,
+      userId,
+    );
+  }
 }

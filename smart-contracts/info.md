@@ -1,3 +1,9 @@
+Command to generate types and automatically pass them to server folder
+
+```bash
+npm run build
+```
+
 Command to deploy smart contract (deploys to Arbitrum Sepolia)
 
 ```bash
@@ -10,11 +16,7 @@ Command to verify smart contract
 npx hardhat verify --network arbitrumSepolia <contract>
 ```
 
-Command to generate types and automatically pass them to server folder
 
-```bash
-npm run build
-```
 
 
 Command to generate types for NestJS server (common.ts and VotingFactory.ts files)

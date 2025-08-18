@@ -10,6 +10,7 @@ import {
   InviteCodesGenerator,
   StopButton,
   StartButton,
+  EditButton,
 } from "@/components/buttons";
 
 const ElectionType = {
@@ -252,10 +253,11 @@ export default function ElectionView({ address }) {
                           {election?.isCreator ? (
                             <EditButton
                               disabled={
-                                election.isActive || election.startedManually
+                                election.isActive || election.endTime > 0
                               }
                               candidateId={candidate.id}
                               electionAddress={election.contractAddress}
+                              currentName={candidate.name}
                             />
                           ) : (
                             <>
@@ -317,30 +319,3 @@ export default function ElectionView({ address }) {
     </div>
   );
 }
-
-const EditButton = ({ candidateId, electionAddress, disabled }) => {
-  const handleEditCandidate = () => {
-    console.log(`Edit candidate ${candidateId}: ${electionAddress}`);
-  };
-
-  return (
-    <div className="flex items-center justify-end text-right">
-      {disabled ? (
-        <button
-          disabled
-          title="Election already started"
-          className="flex-1 w-24 max-h-20 transform max-md:text-xs cursor-not-allowed opacity-50 rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 md:max-w-32 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
-        >
-          Edit
-        </button>
-      ) : (
-        <button
-          onClick={() => console.log(`Edit candidate ${candidate.id}`)}
-          className="flex-1 w-24 max-h-20 transform max-md:text-xs cursor-pointer rounded-lg border-1 bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 md:max-w-32 dark:bg-white border-neutral-800 dark:border-neutral-200 dark:text-black dark:hover:bg-gray-200"
-        >
-          Edit
-        </button>
-      )}
-    </div>
-  );
-};
