@@ -566,7 +566,7 @@ export class BlockchainService {
     if (endTime > 0)
       throw new Error(`You can't change candidate name in finished election`);
     if (creator != creatorWallet.address)
-      throw new ForbiddenException('Only creator can stop the election');
+      throw new ForbiddenException('Only creator can edit candidate information');
     if (!candidates[candidateId])
       throw new Error(
         `There is no candidate with id ${candidateId} in this election`,
@@ -607,11 +607,11 @@ export class BlockchainService {
       await this.getElectionData(address, userId);
 
     if (isActive)
-      throw new Error(`You can't change candidate name in ongoing election`);
+      throw new Error(`You can't add candidate to ongoing election`);
     if (endTime > 0)
-      throw new Error(`You can't change candidate name in finished election`);
+      throw new Error(`You can't add candidate to finished election`);
     if (creator != creatorWallet.address)
-      throw new ForbiddenException('Only creator can stop the election');
+      throw new ForbiddenException('Only creator can add candidate');
 
     const cfg = VOTE_REGISTRY[electionType as any];
     if (!cfg) {

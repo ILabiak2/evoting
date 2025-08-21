@@ -221,9 +221,13 @@ export default function ElectionView({ address }) {
                   <h2 className="text-xl font-bold  align-middle">
                     Candidates
                   </h2>
-                  <AddCandidateButton
-                    electionAddress={election.contractAddress}
-                  />
+                  {election?.isCreator &&
+                    !election.isActive &&
+                    election.endTime == 0 && (
+                      <AddCandidateButton
+                        electionAddress={election.contractAddress}
+                      />
+                    )}
                 </div>
 
                 <div className="border border-neutral-200 rounded-lg overflow-hidden dark:border-neutral-700">
