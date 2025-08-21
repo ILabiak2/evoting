@@ -10,7 +10,7 @@ export const useEditCandidateName = () => {
       if (!newName?.trim()) throw new Error("Name cannot be empty");
 
       const res = await fetch(
-        `/api/server/election/${address}/candidates/edit`,
+        `/api/server/election/${address}/candidates`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

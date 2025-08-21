@@ -3,9 +3,8 @@ import { Check, X } from "lucide-react";
 import { useTxStatus } from "@/lib/hooks/useTxStatus";
 import { useEditCandidateName } from "@/lib/hooks/useEditCandidateName";
 import { useQueryClient } from "@tanstack/react-query";
-import { useFormState } from "react-dom";
 
-export const EditButton = ({
+export const EditCandidateButton = ({
   electionAddress,
   candidateId,
   disabled,
@@ -22,24 +21,10 @@ export const EditButton = ({
     data: statusData,
     isLoading: polling,
     error: statusError,
-  } = useTxStatus(txHash || undefined);
+  } = useTxStatus(txHash || undefined, electionAddress);
 
   const confirmed = Boolean(statusData?.confirmed);
   const nameValid = useMemo(() => name.trim().length >= 3, [name]);
-
-  useEffect(() => {
-    if (confirmed && electionAddress) {
-      qc.invalidateQueries({
-        queryKey: ["election", electionAddress],
-        exact: true,
-      });
-      qc.refetchQueries({
-        queryKey: ["election", electionAddress],
-        type: "active",
-        exact: true,
-      });
-    }
-  }, [confirmed, electionAddress, qc]);
 
   const handleOpen = () => {
     if (disabled) return;

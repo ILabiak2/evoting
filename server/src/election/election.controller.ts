@@ -138,7 +138,7 @@ export class ElectionController {
     );
   }
 
-  @Patch(':address/candidates/edit')
+  @Patch(':address/candidates')
   async editCandidate(
     @Param('address') address: string,
     @Body()
@@ -149,6 +149,20 @@ export class ElectionController {
       address,
       body.candidateId,
       body.newName,
+      userId,
+    );
+  }
+
+  @Post(':address/candidates')
+  async addCandidates(
+    @Param('address') address: string,
+    @Body()
+    body: { candidateNames: string[]},
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.addCandidates(
+      address,
+      body.candidateNames,
       userId,
     );
   }

@@ -10,7 +10,8 @@ import {
   InviteCodesGenerator,
   StopButton,
   StartButton,
-  EditButton,
+  EditCandidateButton,
+  AddCandidateButton,
 } from "@/components/buttons";
 
 const ElectionType = {
@@ -216,7 +217,15 @@ export default function ElectionView({ address }) {
 
               {/* Candidates Section */}
               <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4">Candidates</h2>
+                <div className="flex flex-row justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold  align-middle">
+                    Candidates
+                  </h2>
+                  <AddCandidateButton
+                    electionAddress={election.contractAddress}
+                  />
+                </div>
+
                 <div className="border border-neutral-200 rounded-lg overflow-hidden dark:border-neutral-700">
                   <div className="bg-sidebar-primary px-6 py-3 border-b border-neutral-200 dark:border-neutral-700 sticky top-0 z-10">
                     <div className="grid grid-cols-3 gap-4 items-center">
@@ -251,7 +260,7 @@ export default function ElectionView({ address }) {
                             </span>
                           </div>
                           {election?.isCreator ? (
-                            <EditButton
+                            <EditCandidateButton
                               disabled={
                                 election.isActive || election.endTime > 0
                               }
