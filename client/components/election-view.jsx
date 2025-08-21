@@ -274,13 +274,15 @@ export default function ElectionView({ address }) {
                                 electionAddress={election.contractAddress}
                                 currentName={candidate.name}
                               />
-                              <div className="ml-2">
-                                <DeleteCandidateButton
-                                  candidateId={candidate.id}
-                                  electionAddress={election.contractAddress}
-                                  candidateName={candidate.name}
-                                />
-                              </div>
+                              {!election.isActive && election.endTime <= 0 && (
+                                <div className="ml-2">
+                                  <DeleteCandidateButton
+                                    candidateId={candidate.id}
+                                    electionAddress={election.contractAddress}
+                                    candidateName={candidate.name}
+                                  />
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <>
