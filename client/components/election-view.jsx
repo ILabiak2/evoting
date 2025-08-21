@@ -12,6 +12,7 @@ import {
   StartButton,
   EditCandidateButton,
   AddCandidateButton,
+  DeleteCandidateButton,
 } from "@/components/buttons";
 
 const ElectionType = {
@@ -264,14 +265,23 @@ export default function ElectionView({ address }) {
                             </span>
                           </div>
                           {election?.isCreator ? (
-                            <EditCandidateButton
-                              disabled={
-                                election.isActive || election.endTime > 0
-                              }
-                              candidateId={candidate.id}
-                              electionAddress={election.contractAddress}
-                              currentName={candidate.name}
-                            />
+                            <div className="flex flex-row justify-end">
+                              <EditCandidateButton
+                                disabled={
+                                  election.isActive || election.endTime > 0
+                                }
+                                candidateId={candidate.id}
+                                electionAddress={election.contractAddress}
+                                currentName={candidate.name}
+                              />
+                              <div className="ml-2">
+                                <DeleteCandidateButton
+                                  candidateId={candidate.id}
+                                  electionAddress={election.contractAddress}
+                                  candidateName={candidate.name}
+                                />
+                              </div>
+                            </div>
                           ) : (
                             <>
                               {election?.hasVoted ? (

@@ -157,7 +157,7 @@ export class ElectionController {
   async addCandidates(
     @Param('address') address: string,
     @Body()
-    body: { candidateNames: string[]},
+    body: { candidateNames: string[] },
     @User('userId') userId: string,
   ) {
     return this.electionService.addCandidates(
@@ -165,5 +165,14 @@ export class ElectionController {
       body.candidateNames,
       userId,
     );
+  }
+
+  @Delete(':address/candidates/:id')
+  async removeCandidate(
+    @Param('address') address: string,
+    @Param('id') candidateId: number,
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.removeCandidate(address, candidateId, userId);
   }
 }

@@ -457,4 +457,25 @@ export class ElectionService {
       throw new BadRequestException(msg);
     }
   }
+
+  async removeCandidate(
+    electionAddress: string,
+    candidateId: number,
+    userId: string,
+  ) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    try {
+      const { txHash } = await this.blockchain.removeCandidate(
+        electionAddress,
+        candidateId,
+        userId,
+      );
+      return { txHash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
+    }
+  }
 }
