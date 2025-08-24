@@ -87,7 +87,7 @@ export default function Dashboard() {
                       key={election.id}
                       title={election.name}
                       isActive={election.isActive}
-                      votes={election.totalVotes}
+                      startTime={election.startTime}
                       userRole={user?.role}
                       electionType={ElectionType[election.electionType]}
                       address={election.contractAddress}
@@ -143,7 +143,7 @@ const ElectionInfo = ({
   area,
   isActive,
   title,
-  votes,
+  startTime,
   userRole,
   electionType,
   address,
@@ -170,7 +170,7 @@ const ElectionInfo = ({
                 </h3>
                 <div className="flex flex-row items-center">
                   <h3 className="-tracking-4 font-sans text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                    {isActive ? "Active" : "Ended"}
+                    {isActive ? "Active" : startTime == 0 ? 'Not started' : "Ended"}
                   </h3>
                   <span
                     className={`ml-3 inline-block h-3 w-3 rounded-full

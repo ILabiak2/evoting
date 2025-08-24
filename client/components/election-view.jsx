@@ -305,6 +305,7 @@ export default function ElectionView({ address }) {
                               ) : (
                                 <VoteButton
                                   candidateId={candidate.id}
+                                  candidateName={candidate.name}
                                   electionAddress={election.contractAddress}
                                   disabled={
                                     String(election?.electionType).includes(
