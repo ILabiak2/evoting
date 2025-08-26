@@ -281,6 +281,64 @@ describe("VotingFactory", function () {
     });
   });
 
+  describe("editElection name", function () {
+    it("Змінює назву виборчого процесу", async function () {
+      const tx = await voting.createPrivateElection(
+        "Голосування 1",
+        ["Кандидат 1", "Кандидат 2"],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      const electionAddress = event?.args.contractAddress;
+
+      const election = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      let electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.name).to.equal("Голосування 1");
+      expect(electionData.fullInfo.coreData.id).to.equal(0);
+      expect(electionData.fullInfo.coreData.candidateCount).to.equal(2);
+      expect(electionData.fullInfo.coreData.candidates[0].name).to.equal(
+        "Кандидат 1"
+      );
+      expect(electionData.fullInfo.coreData.candidates[1].name).to.equal(
+        "Кандидат 2"
+      );
+      expect(electionData.fullInfo.coreData.candidates.length).to.equal(2);
+
+      await election.editElectionName("Голосування змінено");
+
+      electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.name).to.equal(
+        "Голосування змінено"
+      );
+
+      await election.startElection();
+      await expect(
+        election.editElectionName("Голосування 333")
+      ).to.be.revertedWith("Election already started");
+      electionData = await voting.getElectionByAddress(electionAddress);
+
+      expect(electionData.fullInfo.coreData.name).to.equal(
+        "Голосування змінено"
+      );
+
+      await election.endElection();
+      await expect(
+        election.editElectionName("Голосування 333")
+      ).to.be.revertedWith("Election already started");
+    });
+  });
+
   describe("addCandidate", function () {
     it("Додає кандидатів до виборів", async function () {
       const tx = await voting.createPrivateElection(
@@ -500,8 +558,8 @@ describe("VotingFactory", function () {
         "Кандидат 3"
       );
       expect(electionData.fullInfo.coreData.candidates.length).to.equal(3);
-    
-      await election.removeCandidate(1)
+
+      await election.removeCandidate(1);
 
       electionData = await voting.getElectionByAddress(electionAddress);
 
@@ -514,9 +572,9 @@ describe("VotingFactory", function () {
       );
 
       await election.startElection();
-      await expect(
-        election.removeCandidate(1)
-      ).to.be.revertedWith("Election already started");
+      await expect(election.removeCandidate(1)).to.be.revertedWith(
+        "Election already started"
+      );
 
       electionData = await voting.getElectionByAddress(electionAddress);
 
@@ -528,9 +586,9 @@ describe("VotingFactory", function () {
       );
 
       await election.endElection();
-      await expect(
-        election.removeCandidate(0)
-      ).to.be.revertedWith("Election already started");
+      await expect(election.removeCandidate(0)).to.be.revertedWith(
+        "Election already started"
+      );
     });
   });
 

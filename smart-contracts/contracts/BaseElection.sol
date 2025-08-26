@@ -55,6 +55,11 @@ abstract contract BaseElection {
         uint256 indexed candidateId,
         string name
     );
+    event ElectionRenamed(
+        uint256 indexed electionId,
+        string oldName,
+        string newName
+    );
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
@@ -138,6 +143,7 @@ abstract contract BaseElection {
             );
 
             candidateNameExists[nameHash] = true;
+            emit CandidateAdded(electionId, candidates.length - 1, _names[i]);
         }
     }
 
@@ -171,6 +177,18 @@ abstract contract BaseElection {
         c.name = newName;
 
         emit CandidateRenamed(electionId, candidateId, oldName, newName);
+    }
+
+    function editElectionName(
+        string calldata newName
+    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
+        require(bytes(newName).length > 0, "Empty name");
+        if (keccak256(bytes(name)) == keccak256(bytes(newName))) {
+            return;
+        }
+        string memory oldName = name;
+        name = newName;
+        emit ElectionRenamed(electionId, oldName, newName);
     }
 
     function removeCandidate(
