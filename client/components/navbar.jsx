@@ -105,18 +105,16 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        router.push("/dashboard");
-                      }}
-                    >
-                      <Bolt
-                        size={16}
-                        strokeWidth={2}
-                        className="opacity-60"
-                        aria-hidden="true"
-                      />
-                      <span>Vote</span>
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard">
+                        <Bolt
+                          size={16}
+                          strokeWidth={2}
+                          className="opacity-60"
+                          aria-hidden="true"
+                        />
+                        <span>Vote</span>
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <Layers2

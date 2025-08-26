@@ -50,6 +50,11 @@ abstract contract BaseElection {
         uint256 indexed candidateId,
         string name
     );
+    event CandidateAdded(
+        uint256 indexed electionId,
+        uint256 indexed candidateId,
+        string name
+    );
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");

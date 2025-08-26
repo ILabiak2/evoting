@@ -83,22 +83,37 @@ export class ElectionService {
     }
   }
 
-  async checkElectionStatus(txHash: string) {
+  async checkElectionStatus(txHash: string, userId: string) {
     const status = await this.blockchain.checkElectionCreated(txHash);
     if (status.confirmed) {
       this.addElectionMetadata(status.electionId).catch((err) => {
         this.logger.error('Failed to add election metadata', err);
       });
+      this.blockchain.parseEvents(txHash, userId).catch((err) => {
+        this.logger.error('Failed to get transaction events', err);
+      });
     }
     return status;
   }
 
-  async checkVoteStatus(txHash: string) {
-    return await this.blockchain.checkUserVoted(txHash);
+  async checkVoteStatus(txHash: string, userId: string) {
+    const status =  await this.blockchain.checkUserVoted(txHash);
+    if (status.confirmed) {
+      this.blockchain.parseEvents(txHash, userId).catch((err) => {
+        this.logger.error('Failed to get transaction events', err);
+      });
+    }
+    return status;
   }
 
-  async checkTxStatus(txHash: string) {
-    return await this.blockchain.getTransactionStatus(txHash);
+  async checkTxStatus(txHash: string, userId: string) {
+    const status =  await this.blockchain.getTransactionStatus(txHash);
+    if (status.confirmed) {
+      this.blockchain.parseEvents(txHash, userId).catch((err) => {
+        this.logger.error('Failed to get transaction events', err);
+      });
+    }
+    return status;
   }
 
   getCreatorElections(userId: string) {

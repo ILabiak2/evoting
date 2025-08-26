@@ -34,18 +34,27 @@ export class ElectionController {
   }
 
   @Get('create-status/:txHash')
-  async checkElectionStatus(@Param('txHash') txHash: string) {
-    return this.electionService.checkElectionStatus(txHash);
+  async checkElectionStatus(
+    @Param('txHash') txHash: string,
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.checkElectionStatus(txHash, userId);
   }
 
   @Get('vote-status/:txHash')
-  async checkVoteStatus(@Param('txHash') txHash: string) {
-    return this.electionService.checkVoteStatus(txHash);
+  async checkVoteStatus(
+    @Param('txHash') txHash: string,
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.checkVoteStatus(txHash, userId);
   }
 
   @Get('status/:txHash')
-  async checkTxStatus(@Param('txHash') txHash: string) {
-    return this.electionService.checkTxStatus(txHash);
+  async checkTxStatus(
+    @Param('txHash') txHash: string,
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.checkTxStatus(txHash, userId);
   }
 
   @Get()

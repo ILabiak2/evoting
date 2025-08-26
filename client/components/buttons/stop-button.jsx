@@ -47,10 +47,10 @@ export const StopButton = ({ electionAddress }) => {
         }`}
       >
         {stopMutation.isPending
-          ? "Stopping..."
+          ? "Ending..."
           : txHash && !confirmed
             ? "Pending…"
-            : "Stop Election"}
+            : "End Election"}
       </button>
 
       {open && (

@@ -7,8 +7,7 @@ import AddElection from "@/components/add-election"
 
 export default function CreateElection() {
     return (
-        // <ProtectedRoute requiredRole={'creator'}> add later
-        <ProtectedRoute>
+        <ProtectedRoute requiredRole={'creator'}>
             <Sidebar>
                 <AddElection />
             </Sidebar>

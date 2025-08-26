@@ -7,7 +7,7 @@ import {
 import { ethers } from 'ethers';
 import { VotingFactory } from './_types/VotingFactory';
 import * as VotingFactoryABI from './_abi/VotingFactory.json';
-// import * as PublicSingleElectionAbi from './_abi/PublicElection.json';
+import * as PublicSingleElectionAbi from './_abi/PublicElection.json';
 import { VOTE_REGISTRY } from './types/vote-schemas';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { CreateElectionParams } from './types/election.interface';
@@ -16,6 +16,7 @@ import {
   ElectionTypeFromNumber,
 } from './types/election-type.enum';
 import { PrismaService } from '@/prisma/prisma.service';
+import { mergeEventOnlyAbi, decodeTxWithUnionAbi } from './events-helper';
 
 declare global {
   interface BigInt {
@@ -32,6 +33,7 @@ export class BlockchainService {
   private provider: ethers.JsonRpcProvider;
   private contract: VotingFactory;
   private adminWallet: ethers.Wallet;
+  private unionAbi;
   // private contractWithSigner: ethers.Contract;
 
   constructor(
@@ -52,6 +54,11 @@ export class BlockchainService {
       VotingFactoryABI as any,
       this.provider,
     ) as unknown as VotingFactory;
+
+    this.unionAbi = mergeEventOnlyAbi([
+      VotingFactoryABI,
+      PublicSingleElectionAbi,
+    ]);
   }
 
   formatElectionData(election: any) {
@@ -204,6 +211,76 @@ export class BlockchainService {
   async getTransactionStatus(txHash: string) {
     const receipt = await this.getConfirmedReceipt(txHash);
     return { confirmed: !!receipt };
+  }
+
+  async parseEvents(txHash: string, userId: string) {
+    const events = await decodeTxWithUnionAbi({
+      provider: this.provider,
+      unionAbi: this.unionAbi,
+      txHash,
+    });
+
+    for (let event of events) {
+      if (!event.parsed) continue;
+      let description = '';
+      // console.log(event);
+      const { name, candidates, id } = await this.getElectionData(
+        event.args.contractAddress || event.address,
+        userId,
+      );
+      switch (event.event) {
+        case 'VoteCast':
+          description = `Casted vote to candidate ${candidates[event.args.candidateId]?.name} in election ${name}`;
+          break;
+        case 'CandidateAdded': //need to test after updating smart contract code
+          description = `Added candidate ${event.args.name} to election ${name}`;
+          break;
+        case 'CandidateRemoved':
+          description = `Removed candidate ${event.args.name} from election ${name}`;
+          break;
+        case 'CandidateRenamed':
+          description = `Renamed candidate from ${event.args.oldName} to ${event.args.newName} in election ${name}`;
+          break;
+        case 'ElectionStarted':
+          description = `Election ${name} started`;
+          break;
+        case 'ElectionEnded':
+          description = `Election ${name} ended`;
+          break;
+        case 'ElectionCreated':
+          description = `Election ${name} created`;
+          break;
+        default:
+          console.log('Unknown event: ' + event.event);
+          continue;
+      }
+      const dbEvent = await this.prisma.events.findFirst({
+        where: {
+          tx_hash: txHash,
+          factory_address: process.env.CONTRACT_ADDRESS
+        },
+      });
+      if (dbEvent) continue;
+      const meta = await this.prisma.elections_metadata.findFirst({
+        where: {
+          election_address: event.args.contractAddress || event.address,
+        },
+      });
+      if (!meta) {
+        console.log('Could not find election metadata');
+      }
+      await this.prisma.events.create({
+        data: {
+          user_id: userId,
+          tx_hash: txHash,
+          description,
+          election_id: meta.id,
+          factory_address: process.env.CONTRACT_ADDRESS,
+          time: new Date(event.timestamp * 1000),
+        },
+      });
+      console.log('Event added');
+    }
   }
 
   async checkUserVoted(txHash: string): Promise<{
