@@ -14,8 +14,8 @@ abstract contract BaseElection {
     uint256 public startTime;
     uint256 public endTime;
     bool public isActive;
-    bool public startedManually;
-    bool public endedManually;
+    bool public started;
+    bool public ended;
     uint256 public voterLimit;
     uint256 public voterCount;
     uint256 public createdAt;
@@ -59,6 +59,11 @@ abstract contract BaseElection {
         uint256 indexed electionId,
         string oldName,
         string newName
+    );
+    event EndTimeUpdated(
+        uint256 indexed electionId,
+        uint256 oldEndTime,
+        uint256 newEndTime
     );
 
     modifier onlyAdmin() {
@@ -110,11 +115,11 @@ abstract contract BaseElection {
         if (_startImmediately) {
             startTime = block.timestamp;
             isActive = true;
-            startedManually = false;
+            started = true;
         } else {
             startTime = 0;
             isActive = false;
-            startedManually = true;
+            started = false;
         }
 
         endTime = 0; // Not set at creation
@@ -211,8 +216,8 @@ abstract contract BaseElection {
     }
 
     function isElectionActive() public view returns (bool) {
-        if (endedManually) return false;
-        if (startedManually) {
+        if (ended) return false;
+        if (started && endTime != 0) {
             return block.timestamp <= endTime;
         }
         return isActive;
@@ -220,9 +225,9 @@ abstract contract BaseElection {
 
     function startElection() external onlyCreatorOrAdmin(electionId) {
         require(!isActive, "Already active");
-        require(!endedManually, "Election has been already manually ended");
+        require(!ended, "Election has already ended");
         isActive = true;
-        startedManually = true;
+        started = true;
         startTime = block.timestamp;
         emit ElectionStarted(electionId);
     }
@@ -230,9 +235,24 @@ abstract contract BaseElection {
     function endElection() external onlyCreatorOrAdmin(electionId) {
         require(isActive, "Election is not active");
         isActive = false;
-        endedManually = true;
+        ended = true;
         endTime = block.timestamp;
         emit ElectionEnded(electionId);
+    }
+
+    function setEndTime(
+        uint256 newEndTime
+    ) external onlyCreatorOrAdmin(electionId) {
+        require(!ended, "Election already ended");
+        require(
+            newEndTime == 0 || newEndTime > block.timestamp,
+            "End must be in the future or zero"
+        );
+
+        uint256 old = endTime;
+        endTime = newEndTime;
+
+        emit EndTimeUpdated(electionId, old, newEndTime);
     }
 
     function getCandidates() external view returns (Candidate[] memory) {
@@ -269,8 +289,8 @@ abstract contract BaseElection {
                 startTime: startTime,
                 endTime: endTime,
                 isActive: isActive,
-                startedManually: startedManually,
-                endedManually: endedManually,
+                started: started,
+                ended: ended,
                 candidateCount: candidates.length,
                 voterLimit: voterLimit,
                 candidates: list

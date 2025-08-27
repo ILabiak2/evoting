@@ -54,7 +54,7 @@ describe("VotingFactory", function () {
       expect(elections[0].coreData.name).to.equal("Голосування 1");
       expect(electionTypeLabels[elections[0].electionType]).to.equal("Public");
       expect(elections[0].coreData.isActive).to.equal(true);
-      expect(elections[0].coreData.startedManually).to.equal(false);
+      expect(elections[0].coreData.started).to.equal(true);
 
       const activeElections = await voting.getActiveElections();
 
@@ -219,7 +219,7 @@ describe("VotingFactory", function () {
       expect(elections.length).to.equal(1);
       expect(elections[0].coreData.name).to.equal("Election via signature");
       expect(elections[0].coreData.isActive).to.equal(true);
-      expect(elections[0].coreData.startedManually).to.equal(false);
+      expect(elections[0].coreData.started).to.equal(true);
 
       const activeElections = await voting.getActiveElections();
 
@@ -336,6 +336,74 @@ describe("VotingFactory", function () {
       await expect(
         election.editElectionName("Голосування 333")
       ).to.be.revertedWith("Election already started");
+    });
+  });
+
+  describe("set election endTime", function () {
+    it("Встановлює час закінчення голосування", async function () {
+      const tx = await voting.createPrivateElection(
+        "Голосування 1",
+        ["Кандидат 1"],
+        0,
+        false
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      const electionAddress = event?.args.contractAddress;
+
+      const election = await ethers.getContractAt(
+        "PrivateElection",
+        electionAddress
+      );
+
+      let all = await voting.getAllElections();
+      expect(all[0].coreData.name).to.equal("Голосування 1");
+      expect(all[0].coreData.endTime).to.equal(0);
+      expect(all[0].coreData.isActive).to.equal(false);
+
+      let date = parseInt(Date.now() / 1000);
+      await expect(election.setEndTime(date)).to.be.revertedWith(
+        "End must be in the future or zero"
+      );
+
+      all = await voting.getAllElections();
+      expect(all[0].coreData.name).to.equal("Голосування 1");
+      expect(all[0].coreData.endTime).to.equal(0);
+      expect(all[0].coreData.isActive).to.equal(false);
+
+      await election.setEndTime(date + 35000);
+
+      all = await voting.getAllElections();
+      expect(all[0].coreData.name).to.equal("Голосування 1");
+      expect(all[0].coreData.endTime).to.equal(date + 35000);
+      expect(all[0].coreData.isActive).to.equal(false);
+
+      await election.startElection();
+      date = parseInt(Date.now() / 1000) + 35000;
+      await election.setEndTime(date);
+
+      all = await voting.getAllElections();
+      expect(all[0].coreData.name).to.equal("Голосування 1");
+      expect(all[0].coreData.endTime).to.equal(date);
+      expect(all[0].coreData.isActive).to.equal(true);
+
+      const endTx = await election.endElection();
+      const endReceipt = await endTx.wait();
+      const block = await ethers.provider.getBlock(endReceipt.blockNumber);
+      const ts = block.timestamp;
+      
+      date = parseInt(Date.now() / 1000) + 115000;
+      await expect(election.setEndTime(date)).to.be.revertedWith(
+        "Election already ended"
+      );
+
+      all = await voting.getAllElections();
+      expect(all[0].coreData.name).to.equal("Голосування 1");
+      expect(all[0].coreData.endTime).to.equal(ts);
+      expect(all[0].coreData.isActive).to.equal(false);
     });
   });
 
@@ -686,12 +754,12 @@ describe("VotingFactory", function () {
       await election.startElection();
       let all = await voting.getAllElections();
       expect(all[0].coreData.isActive).to.equal(true);
-      expect(all[0].coreData.startedManually).to.equal(true);
+      expect(all[0].coreData.started).to.equal(true);
 
       await election.endElection();
       all = await voting.getAllElections();
       expect(all[0].coreData.isActive).to.equal(false);
-      expect(all[0].coreData.endedManually).to.equal(true);
+      expect(all[0].coreData.ended).to.equal(true);
     });
   });
 
@@ -717,7 +785,7 @@ describe("VotingFactory", function () {
       await election.endElection();
 
       await expect(election.startElection()).to.be.revertedWith(
-        "Election has been already manually ended"
+        "Election has already ended"
       );
     });
   });
@@ -841,7 +909,7 @@ describe("VotingFactory", function () {
       await election2.connect(user1).vote(0);
       const all = await voting.getAllElections();
       expect(all[1].coreData.isActive).to.equal(false);
-      expect(all[1].coreData.endedManually).to.equal(true);
+      expect(all[1].coreData.ended).to.equal(true);
     });
   });
 

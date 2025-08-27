@@ -54,7 +54,12 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         address _voter
     ) internal override {
         require(_voter != creator, "Creator cannot vote");
-        require(isActive && !endedManually, "Election not active");
+        if (endTime > 0 && block.timestamp > endTime) {
+            isActive = false;
+            ended = true;
+            revert("Election has ended");
+        }
+        require(isActive && !ended, "Election not active");
         require(!hasVoted[_voter], "Already voted");
         require(_candidateId < candidates.length, "Invalid candidate");
 
@@ -71,7 +76,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         // Якщо ліміт досягнуто — завершуємо
         if (voterLimit > 0 && voterCount >= voterLimit) {
             isActive = false;
-            endedManually = true;
+            ended = true;
             endTime = block.timestamp;
             emit ElectionEnded(electionId);
         }
@@ -147,7 +152,7 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
 
     function getResults() external view returns (Candidate[] memory) {
         require(
-            endedManually ||
+            ended ||
                 (endTime > 0 && block.timestamp > endTime) ||
                 (voterLimit > 0 && voterCount >= voterLimit),
             "Election has not ended yet"

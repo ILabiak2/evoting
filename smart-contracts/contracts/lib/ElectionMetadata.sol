@@ -16,8 +16,8 @@ library ElectionMetadata {
         uint256 endTime;
         address creator;
         bool isActive;
-        bool startedManually;
-        bool endedManually;
+        bool started;
+        bool ended;
         uint256 candidateCount;
         uint256 voterLimit;
         CandidateView[] candidates;
