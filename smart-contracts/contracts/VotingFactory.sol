@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 import "./PublicElection.sol";
 import "./PrivateElection.sol";
+import "./PublicElectionMulti.sol";
+import "./PrivateElectionMulti.sol";
 import {ElectionData} from "./interfaces/ElectionData.sol";
 import {ElectionMetadata} from "./lib/ElectionMetadata.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
@@ -12,19 +14,27 @@ contract VotingFactory is EIP712 {
     address public admin;
     address public publicElectionImpl;
     address public privateElectionImpl;
+    address public publicElectionMultiImpl;
+    address public privateElectionMultiImpl;
 
     constructor(
         address _publicElectionImpl,
-        address _privateElectionImpl
+        address _privateElectionImpl,
+        address _publicElectionMultiImpl,
+        address _privateElectionMultiImpl
     ) EIP712("VotingFactory", "1") {
         admin = msg.sender;
         publicElectionImpl = _publicElectionImpl;
         privateElectionImpl = _privateElectionImpl;
+        publicElectionMultiImpl = _publicElectionMultiImpl;
+        privateElectionMultiImpl = _privateElectionMultiImpl;
     }
 
     enum ElectionType {
         Public,
-        Private
+        Private,
+        PublicMulti,
+        PrivateMulti
     }
 
     struct ElectionInfo {
@@ -50,12 +60,12 @@ contract VotingFactory is EIP712 {
     uint256 public electionCounter;
     mapping(uint256 => ElectionInfo) public elections;
 
-    bytes32 public constant PUBLIC_ELECTION_TYPEHASH =
-        keccak256(
-            "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
-        );
+    // bytes32 public constant PUBLIC_ELECTION_TYPEHASH =
+    //     keccak256(
+    //         "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
+    //     );
 
-    bytes32 public constant PRIVATE_ELECTION_TYPEHASH =
+    bytes32 public constant ELECTION_TYPEHASH =
         keccak256(
             "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
         );
@@ -74,6 +84,7 @@ contract VotingFactory is EIP712 {
         uint256 _voterLimit,
         bool _startImmediately,
         address _creator,
+        uint256 _maxChoicesPerVoter,
         ElectionType implType
     ) internal returns (address) {
         address clone;
@@ -103,6 +114,32 @@ contract VotingFactory is EIP712 {
                 _startImmediately
             );
             electionType = ElectionType.Private;
+        } else if (implType == ElectionType.PublicMulti) {
+            clone = Clones.clone(publicElectionMultiImpl);
+            PublicElectionMulti(clone).initialize(
+                name,
+                candidateNames,
+                _creator,
+                admin,
+                electionCounter,
+                _voterLimit,
+                _startImmediately,
+                _maxChoicesPerVoter
+            );
+            electionType = ElectionType.PublicMulti;
+        } else if (implType == ElectionType.PrivateMulti) {
+            clone = Clones.clone(privateElectionMultiImpl);
+            PrivateElectionMulti(clone).initialize(
+                name,
+                candidateNames,
+                _creator,
+                admin,
+                electionCounter,
+                _voterLimit,
+                _startImmediately,
+                _maxChoicesPerVoter
+            );
+            electionType = ElectionType.PrivateMulti;
         }
 
         elections[electionCounter] = ElectionInfo({
@@ -124,107 +161,281 @@ contract VotingFactory is EIP712 {
         return clone;
     }
 
-    function createPublicElection(
+    function createElection(
         string memory name,
         string[] memory candidateNames,
-        uint256 _voterLimit,
-        bool _startImmediately
+        uint256 voterLimit,
+        bool startImmediately,
+        uint256 maxChoicesPerVoter,
+        ElectionType electionType
     ) external returns (address) {
         return
             _createElection(
                 name,
                 candidateNames,
-                _voterLimit,
-                _startImmediately,
+                voterLimit,
+                startImmediately,
                 msg.sender,
-                ElectionType.Public
+                maxChoicesPerVoter,
+                electionType
             );
     }
 
-    function createPublicElectionWithSignature(
+    function createElectionWithSignature(
         string memory name,
-        bool _startImmediately,
-        uint256 _voterLimit,
-        address _creator,
+        bool startImmediately,
+        uint256 voterLimit,
+        address creator,
         string[] memory candidateNames,
-        bytes memory signature
+        bytes memory signature,
+        uint256 maxChoicesPerVoter,
+        ElectionType electionType
     ) external returns (address) {
         bytes32 structHash = keccak256(
             abi.encode(
-                PUBLIC_ELECTION_TYPEHASH,
+                ELECTION_TYPEHASH,
                 keccak256(bytes(name)),
-                _startImmediately,
-                _voterLimit,
-                _creator
+                startImmediately,
+                voterLimit,
+                creator
             )
         );
 
         bytes32 digest = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(digest, signature);
 
-        require(signer == _creator, "Invalid signature");
+        require(signer == creator, "Invalid signature");
 
         return
             _createElection(
                 name,
                 candidateNames,
-                _voterLimit,
-                _startImmediately,
-                _creator,
-                ElectionType.Public
+                voterLimit,
+                startImmediately,
+                creator,
+                maxChoicesPerVoter,
+                electionType
             );
     }
+    ////
 
-    function createPrivateElection(
-        string memory name,
-        string[] memory candidateNames,
-        uint256 _voterLimit,
-        bool _startImmediately
-    ) external returns (address) {
-        return
-            _createElection(
-                name,
-                candidateNames,
-                _voterLimit,
-                _startImmediately,
-                msg.sender,
-                ElectionType.Private
-            );
-    }
+    // function createPublicElection(
+    //     string memory name,
+    //     string[] memory candidateNames,
+    //     uint256 _voterLimit,
+    //     bool _startImmediately
+    // ) external returns (address) {
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             msg.sender,
+    //             1,
+    //             ElectionType.Public
+    //         );
+    // }
 
-    function createPrivateElectionWithSignature(
-        string memory name,
-        bool _startImmediately,
-        uint256 _voterLimit,
-        address _creator,
-        string[] memory candidateNames,
-        bytes memory signature
-    ) external returns (address) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                PRIVATE_ELECTION_TYPEHASH,
-                keccak256(bytes(name)),
-                _startImmediately,
-                _voterLimit,
-                _creator
-            )
-        );
+    // function createPublicElectionWithSignature(
+    //     string memory name,
+    //     bool _startImmediately,
+    //     uint256 _voterLimit,
+    //     address _creator,
+    //     string[] memory candidateNames,
+    //     bytes memory signature
+    // ) external returns (address) {
+    //     bytes32 structHash = keccak256(
+    //         abi.encode(
+    //             PUBLIC_ELECTION_TYPEHASH,
+    //             keccak256(bytes(name)),
+    //             _startImmediately,
+    //             _voterLimit,
+    //             _creator
+    //         )
+    //     );
 
-        bytes32 digest = _hashTypedDataV4(structHash);
-        address signer = ECDSA.recover(digest, signature);
+    //     bytes32 digest = _hashTypedDataV4(structHash);
+    //     address signer = ECDSA.recover(digest, signature);
 
-        require(signer == _creator, "Invalid signature");
+    //     require(signer == _creator, "Invalid signature");
 
-        return
-            _createElection(
-                name,
-                candidateNames,
-                _voterLimit,
-                _startImmediately,
-                _creator,
-                ElectionType.Private
-            );
-    }
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             _creator,
+    //             1,
+    //             ElectionType.Public
+    //         );
+    // }
+
+    // function createPrivateElection(
+    //     string memory name,
+    //     string[] memory candidateNames,
+    //     uint256 _voterLimit,
+    //     bool _startImmediately
+    // ) external returns (address) {
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             msg.sender,
+    //             1,
+    //             ElectionType.Private
+    //         );
+    // }
+
+    // function createPrivateElectionWithSignature(
+    //     string memory name,
+    //     bool _startImmediately,
+    //     uint256 _voterLimit,
+    //     address _creator,
+    //     string[] memory candidateNames,
+    //     bytes memory signature
+    // ) external returns (address) {
+    //     bytes32 structHash = keccak256(
+    //         abi.encode(
+    //             PRIVATE_ELECTION_TYPEHASH,
+    //             keccak256(bytes(name)),
+    //             _startImmediately,
+    //             _voterLimit,
+    //             _creator
+    //         )
+    //     );
+
+    //     bytes32 digest = _hashTypedDataV4(structHash);
+    //     address signer = ECDSA.recover(digest, signature);
+
+    //     require(signer == _creator, "Invalid signature");
+
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             _creator,
+    //             1,
+    //             ElectionType.Private
+    //         );
+    // }
+
+    // function createPublicMultiElection(
+    //     string memory name,
+    //     string[] memory candidateNames,
+    //     uint256 _voterLimit,
+    //     bool _startImmediately,
+    //     uint256 _maxChoicesPerVoter
+    // ) external returns (address) {
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             msg.sender,
+    //             _maxChoicesPerVoter,
+    //             ElectionType.PublicMulti
+    //         );
+    // }
+
+    // function createPublicMultiElectionWithSignature(
+    //     string memory name,
+    //     bool _startImmediately,
+    //     uint256 _voterLimit,
+    //     address _creator,
+    //     string[] memory candidateNames,
+    //     uint256 _maxChoicesPerVoter,
+    //     bytes memory signature
+    // ) external returns (address) {
+    //     bytes32 structHash = keccak256(
+    //         abi.encode(
+    //             PUBLIC_ELECTION_TYPEHASH,
+    //             keccak256(bytes(name)),
+    //             _startImmediately,
+    //             _voterLimit,
+    //             _creator,
+    //             _maxChoicesPerVoter
+    //         )
+    //     );
+
+    //     bytes32 digest = _hashTypedDataV4(structHash);
+    //     address signer = ECDSA.recover(digest, signature);
+
+    //     require(signer == _creator, "Invalid signature");
+
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             _creator,
+    //             _maxChoicesPerVoter,
+    //             ElectionType.PublicMulti
+    //         );
+    // }
+
+    // function createPrivateMultiElection(
+    //     string memory name,
+    //     string[] memory candidateNames,
+    //     uint256 _voterLimit,
+    //     bool _startImmediately,
+    //     uint256 _maxChoicesPerVoter
+    // ) external returns (address) {
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             msg.sender,
+    //             _maxChoicesPerVoter,
+    //             ElectionType.PrivateMulti
+    //         );
+    // }
+
+    // function createPrivateMultiElectionWithSignature(
+    //     string memory name,
+    //     bool _startImmediately,
+    //     uint256 _voterLimit,
+    //     address _creator,
+    //     string[] memory candidateNames,
+    //     uint256 _maxChoicesPerVoter,
+    //     bytes memory signature
+    // ) external returns (address) {
+    //     bytes32 structHash = keccak256(
+    //         abi.encode(
+    //             PUBLIC_ELECTION_TYPEHASH,
+    //             keccak256(bytes(name)),
+    //             _startImmediately,
+    //             _voterLimit,
+    //             _creator,
+    //             _maxChoicesPerVoter
+    //         )
+    //     );
+
+    //     bytes32 digest = _hashTypedDataV4(structHash);
+    //     address signer = ECDSA.recover(digest, signature);
+
+    //     require(signer == _creator, "Invalid signature");
+
+    //     return
+    //         _createElection(
+    //             name,
+    //             candidateNames,
+    //             _voterLimit,
+    //             _startImmediately,
+    //             _creator,
+    //             _maxChoicesPerVoter,
+    //             ElectionType.Private
+    //         );
+    // }
 
     function getElection(
         uint256 id

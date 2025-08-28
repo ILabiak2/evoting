@@ -1,12 +1,20 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const electionTypeLabels = ["Public", "Private"];
+const electionTypeLabels = ["Public", "Private", "PublicMulti", "PrivateMulti"];
 
 const voteTypes = {
   Vote: [
     { name: "electionId", type: "uint256" },
     { name: "candidateId", type: "uint256" },
+    { name: "voter", type: "address" },
+  ],
+};
+
+const multiVoteTypes = {
+  Vote: [
+    { name: "electionId", type: "uint256" },
+    { name: "candidateIds", type: "uint256[]" },
     { name: "voter", type: "address" },
   ],
 };
@@ -18,8 +26,19 @@ const authTypes = {
   ],
 };
 
+const ElectionType = {
+  Public: 0,
+  Private: 1,
+  PublicMulti: 2,
+  PrivateMulti: 3,
+};
+
 describe("VotingFactory", function () {
-  let voting, publicElectionImpl, privateElectionImpl;
+  let voting,
+    publicElectionImpl,
+    privateElectionImpl,
+    publicElectionMultiImpl,
+    privateElectionMultiImpl;
   let owner, user1, user2;
 
   beforeEach(async () => {
@@ -30,10 +49,22 @@ describe("VotingFactory", function () {
     const PrivateElection = await ethers.getContractFactory("PrivateElection");
     privateElectionImpl = await PrivateElection.deploy();
 
+    const PubcicMultiElection = await ethers.getContractFactory(
+      "PublicElectionMulti"
+    );
+    publicElectionMultiImpl = await PubcicMultiElection.deploy();
+
+    const PrivateMultiElection = await ethers.getContractFactory(
+      "PrivateElectionMulti"
+    );
+    privateElectionMultiImpl = await PrivateMultiElection.deploy();
+
     const VotingFactory = await ethers.getContractFactory("VotingFactory");
     voting = await VotingFactory.deploy(
       publicElectionImpl.target,
-      privateElectionImpl.target
+      privateElectionImpl.target,
+      publicElectionMultiImpl.target,
+      privateElectionMultiImpl.target
     );
   });
 
@@ -42,11 +73,13 @@ describe("VotingFactory", function () {
       const electionsBefore = await voting.getAllElections();
       expect(electionsBefore.length).to.equal(0);
 
-      await voting.createPublicElection(
+      await voting.createElection(
         "Голосування 1",
         ["Кандидат 1"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Public
       );
       const elections = await voting.getAllElections();
 
@@ -68,11 +101,13 @@ describe("VotingFactory", function () {
     });
 
     it("Створює голосування без старту", async function () {
-      await voting.createPublicElection(
+      await voting.createElection(
         "Голосування 2",
         ["Кандидат 1"],
         100,
-        false
+        false,
+        0,
+        ElectionType.Public
       );
       const elections = await voting.getAllElections();
       expect(elections.length).to.equal(1);
@@ -91,11 +126,13 @@ describe("VotingFactory", function () {
       expect(elections.length).to.equal(0);
 
       for (let i = 0; i < 10; i++) {
-        await voting.createPublicElection(
+        await voting.createElection(
           `Election ${i}`,
           ["Кандидат 1"],
           0,
-          false
+          false,
+          0,
+          ElectionType.Public
         );
       }
 
@@ -120,11 +157,13 @@ describe("VotingFactory", function () {
     });
 
     it("Отримання інформації про вибрані голосування за адресою]", async () => {
-      const tx = await voting.createPublicElection(
+      const tx = await voting.createElection(
         "Election",
         ["Candidate 1"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Public
       );
       const receipt = await tx.wait();
 
@@ -137,7 +176,6 @@ describe("VotingFactory", function () {
 
       expect(election.fullInfo.coreData.id).to.equal(0);
       expect(election.hasVoted).to.equal(false);
-      console.log(election.votedCandidateIds);
       expect(election.votedCandidateIds).to.deep.equal([]);
       expect(election.fullInfo.electionType).to.equal(0);
       expect(election.fullInfo.coreData.isActive).to.equal(true);
@@ -156,13 +194,27 @@ describe("VotingFactory", function () {
       for (let i = 0; i < 3; i++) {
         await voting
           .connect(user1)
-          .createPublicElection(`Election ${i}`, ["Кандидат 1"], 0, false);
+          .createElection(
+            `Election ${i}`,
+            ["Кандидат 1"],
+            0,
+            false,
+            0,
+            ElectionType.Public
+          );
       }
 
       for (let i = 0; i < 5; i++) {
         await voting
           .connect(user2)
-          .createPublicElection(`Election2 ${i}`, ["Кандидат 2"], 0, false);
+          .createElection(
+            `Election2 ${i}`,
+            ["Кандидат 2"],
+            0,
+            false,
+            0,
+            ElectionType.Public
+          );
       }
 
       elections = await voting.connect(user1).getMyElections();
@@ -205,13 +257,15 @@ describe("VotingFactory", function () {
 
       await voting
         .connect(user2)
-        .createPublicElectionWithSignature(
+        .createElectionWithSignature(
           value.name,
           value.startImmediately,
           value.voterLimit,
           value.creator,
           ["Кандидат 1"],
-          signature
+          signature,
+          0,
+          ElectionType.Public
         );
 
       const elections = await voting.getAllElections();
@@ -265,13 +319,15 @@ describe("VotingFactory", function () {
       await expect(
         voting
           .connect(user2)
-          .createPublicElectionWithSignature(
+          .createElectionWithSignature(
             value.name,
             value.startImmediately,
             value.voterLimit,
             value.creator,
             ["Кандидат 1"],
-            signature
+            signature,
+            0,
+            ElectionType.Public
           )
       ).to.be.revertedWith("Invalid signature");
 
@@ -283,11 +339,13 @@ describe("VotingFactory", function () {
 
   describe("editElection name", function () {
     it("Змінює назву виборчого процесу", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Голосування 1",
         ["Кандидат 1", "Кандидат 2"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -341,11 +399,13 @@ describe("VotingFactory", function () {
 
   describe("set election endTime", function () {
     it("Встановлює час закінчення голосування", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Голосування 1",
         ["Кандидат 1"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -394,7 +454,7 @@ describe("VotingFactory", function () {
       const endReceipt = await endTx.wait();
       const block = await ethers.provider.getBlock(endReceipt.blockNumber);
       const ts = block.timestamp;
-      
+
       date = parseInt(Date.now() / 1000) + 115000;
       await expect(election.setEndTime(date)).to.be.revertedWith(
         "Election already ended"
@@ -409,11 +469,13 @@ describe("VotingFactory", function () {
 
   describe("addCandidate", function () {
     it("Додає кандидатів до виборів", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Голосування 1",
         ["Кандидат 1"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -450,11 +512,13 @@ describe("VotingFactory", function () {
     });
 
     it("Забороняє додавати кандидати після старту", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Голосування 1",
         ["Кандидат 1"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -474,11 +538,13 @@ describe("VotingFactory", function () {
     });
 
     it("Забороняє додавати більше ніж MAX_CANDIDATES", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Test 1",
         ["Кандидат 1"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -502,11 +568,13 @@ describe("VotingFactory", function () {
     });
 
     it("не дозволяє додати кандидатів з однаковим ім'ям у те саме голосування", async () => {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Вибори",
         ["Іван Іванович"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -529,11 +597,13 @@ describe("VotingFactory", function () {
 
   describe("editCandidate", function () {
     it("Змінює ім’я кандидата", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Голосування 1",
         ["Кандидат 1", "Кандидат 2"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -593,11 +663,13 @@ describe("VotingFactory", function () {
 
   describe("removeCandidate", function () {
     it("Видалення кандидата", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Голосування 1",
         ["Кандидат 1", "Кандидат 2", "Кандидат 3"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -667,11 +739,13 @@ describe("VotingFactory", function () {
     const candidateNames = ["Alice", "Bob", "Charlie"];
 
     beforeEach(async function () {
-      const tx = await voting.createPublicElection(
+      const tx = await voting.createElection(
         electionName,
         ["First"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Public
       );
       const receipt = await tx.wait();
 
@@ -737,11 +811,13 @@ describe("VotingFactory", function () {
 
   describe("startElection / endElection", function () {
     it("Запускає і завершує голосування", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Тест",
         ["Кандидат 1"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -765,11 +841,13 @@ describe("VotingFactory", function () {
 
   describe("stop/start election", function () {
     it("не дозволяє повторно запустити вибори після завершення", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Одноразові вибори",
         ["Кандидат X"],
         0,
-        false
+        false,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -793,11 +871,13 @@ describe("VotingFactory", function () {
   describe("vote", function () {
     let election;
     beforeEach(async () => {
-      const tx = await voting.createPublicElection(
+      const tx = await voting.createElection(
         "Vote Test",
         ["Кандидат"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Public
       );
       const receipt = await tx.wait();
 
@@ -823,7 +903,14 @@ describe("VotingFactory", function () {
     });
 
     it("Не дозволяє голосувати неактивні вибори", async function () {
-      const tx = await voting.createPublicElection("Інше", ["Канд."], 0, false);
+      const tx = await voting.createElection(
+        "Інше",
+        ["Канд."],
+        0,
+        false,
+        0,
+        ElectionType.Public
+      );
       const receipt = await tx.wait();
 
       const event = receipt.logs
@@ -841,11 +928,13 @@ describe("VotingFactory", function () {
     });
 
     it("Голосування у приватному голосуванні", async function () {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Приватне голосування",
         ["Кандидат 1"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -888,11 +977,13 @@ describe("VotingFactory", function () {
     });
 
     it("Завершує вибори, якщо досягнуто ліміту голосів", async function () {
-      const tx = await voting.createPublicElection(
+      const tx = await voting.createElection(
         "Обмежене",
         ["Кандидат 1"],
         1,
-        true
+        true,
+        0,
+        ElectionType.Public
       );
       const receipt = await tx.wait();
 
@@ -915,11 +1006,13 @@ describe("VotingFactory", function () {
 
   describe("getMyVote", function () {
     it("Повертає правильний статус голосування", async function () {
-      const tx = await voting.createPublicElection(
+      const tx = await voting.createElection(
         "Голосування",
         ["Кандидат 1"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Public
       );
       const receipt = await tx.wait();
 
@@ -963,7 +1056,14 @@ describe("VotingFactory", function () {
 
   describe("getResults", function () {
     it("Повертає результати після завершення виборів", async function () {
-      const tx = await voting.createPublicElection("Results", ["A"], 1, true);
+      const tx = await voting.createElection(
+        "Results",
+        ["A"],
+        1,
+        true,
+        0,
+        ElectionType.Public
+      );
       const receipt = await tx.wait();
 
       const event = receipt.logs
@@ -981,7 +1081,14 @@ describe("VotingFactory", function () {
     });
 
     it("Не повертає результати до завершення", async function () {
-      const tx = await voting.createPublicElection("Not ended", ["X"], 0, true);
+      const tx = await voting.createElection(
+        "Not ended",
+        ["X"],
+        0,
+        true,
+        0,
+        ElectionType.Public
+      );
       const receipt = await tx.wait();
 
       const event = receipt.logs
@@ -1004,11 +1111,13 @@ describe("VotingFactory", function () {
     const domainVersion = "1";
 
     beforeEach(async () => {
-      const tx = await voting.createPrivateElection(
+      const tx = await voting.createElection(
         "Підписне голосування",
         ["Кандидат 1"],
         0,
-        true
+        true,
+        0,
+        ElectionType.Private
       );
       const receipt = await tx.wait();
 
@@ -1183,6 +1292,287 @@ describe("VotingFactory", function () {
           fakeAuthSignature
         )
       ).to.be.revertedWith("Not authorized by owner");
+    });
+  });
+
+  describe("Public Multi Choice election", function () {
+    let election, electionId;
+    let chainId, domain;
+    const domainName = "PublicElectionMulti";
+    const domainVersion = "1";
+
+    beforeEach(async () => {
+      const tx = await voting.createElection(
+        "Голосування з можливістю вибору декількох кандидатів",
+        ["Кандидат 1", "Кандидат 2", "Кандидат 3"],
+        0,
+        true,
+        2,
+        ElectionType.PublicMulti
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+      election = await ethers.getContractAt(
+        "PublicElectionMulti",
+        electionAddress
+      );
+      // electionId = 0;
+
+      // const { chainId: chain } = await ethers.provider.getNetwork();
+      // chainId = chain;
+
+      // domain = {
+      //   name: domainName,
+      //   version: domainVersion,
+      //   chainId,
+      //   verifyingContract: electionAddress,
+      // };
+    });
+
+    it("Створює голосування з можливістю вибору декількох кандидатів", async function () {
+      const data = await voting.getAllElections();
+
+      expect(data[0].coreData.name).to.equal(
+        "Голосування з можливістю вибору декількох кандидатів"
+      );
+      expect(data[0].coreData.id).to.equal(0);
+      expect(data[0].coreData.candidateCount).to.equal(3);
+      expect(data[0].coreData.candidates[0].name).to.equal("Кандидат 1");
+      expect(data[0].coreData.candidates[2].name).to.equal("Кандидат 3");
+      expect(electionTypeLabels[data[0].electionType]).to.equal("PublicMulti");
+
+      return;
+      const candidateId = 0;
+      const voterAddress = user1.address;
+
+      const value = {
+        electionId: 0,
+        candidateId,
+        voter: voterAddress,
+      };
+
+      const voteSignature = await user1.signTypedData(domain, voteTypes, value);
+
+      const authValue = {
+        electionId: 0,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      // Голосує через підпис
+      await election
+        .connect(user2)
+        .getFunction("voteWithSignature(uint256,address,bytes,bytes)")(
+        candidateId,
+        voterAddress,
+        voteSignature,
+        authSignature
+      );
+
+      const elections = await voting.getAllElections();
+      expect(elections[0].coreData.candidates[candidateId].voteCount).to.equal(
+        1
+      );
+    });
+
+    it("Створює неправильне голосування з можливістю вибору декількох кандидатів", async function () {
+      await expect(
+        voting.createElection(
+          "Голосування з можливістю вибору декількох кандидатів",
+          ["Кандидат 1", "Кандидат 2", "Кандидат 3"],
+          0,
+          true,
+          0,
+          ElectionType.PublicMulti
+        )
+      ).to.be.revertedWith("maxChoices must be > 0");
+
+      const data = await voting.getAllElections();
+
+      expect(data.length).to.equal(1);
+    });
+
+    it("Голосування за декількох кандидатів", async function () {
+      await election.connect(user1).vote([0, 2]);
+
+      const data = await voting.getAllElections();
+
+      expect(data[0].coreData.name).to.equal(
+        "Голосування з можливістю вибору декількох кандидатів"
+      );
+      expect(data[0].coreData.candidates[0].voteCount).to.equal(1);
+      expect(data[0].coreData.candidates[1].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[2].voteCount).to.equal(1);
+    });
+
+    it("Голосування за декількох кандидатів (одного кандидата не існує)", async function () {
+      await expect(election.connect(user1).vote([0, 4])).to.be.revertedWith(
+        "Invalid candidate"
+      );
+
+      const data = await voting.getAllElections();
+
+      expect(data[0].coreData.name).to.equal(
+        "Голосування з можливістю вибору декількох кандидатів"
+      );
+      expect(data[0].coreData.candidates[0].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[1].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[2].voteCount).to.equal(0);
+    });
+
+    it("Голосування за більшу кількість кандидатів, ніж дозволено", async function () {
+      await expect(election.connect(user1).vote([0, 1, 2])).to.be.revertedWith(
+        "You cannot select more candidates than allowed"
+      );
+
+      const data = await voting.getAllElections();
+
+      expect(data[0].coreData.name).to.equal(
+        "Голосування з можливістю вибору декількох кандидатів"
+      );
+      expect(data[0].coreData.candidates[0].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[1].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[2].voteCount).to.equal(0);
+    });
+
+    it("Голосування два рази за різних кандидатів", async function () {
+      await election.connect(user1).vote([0]);
+
+      let data = await voting.getAllElections();
+
+      expect(data[0].coreData.name).to.equal(
+        "Голосування з можливістю вибору декількох кандидатів"
+      );
+      expect(data[0].coreData.candidates[0].voteCount).to.equal(1);
+      expect(data[0].coreData.candidates[1].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[2].voteCount).to.equal(0);
+
+      await expect(election.connect(user1).vote([0])).to.be.revertedWith(
+        "Already voted"
+      );
+      await expect(election.connect(user1).vote([2])).to.be.revertedWith(
+        "Already voted"
+      );
+
+      data = await voting.getAllElections();
+
+      expect(data[0].coreData.candidates[0].voteCount).to.equal(1);
+      expect(data[0].coreData.candidates[1].voteCount).to.equal(0);
+      expect(data[0].coreData.candidates[2].voteCount).to.equal(0);
+    });
+  });
+
+  describe("Private Multi Choice election", function () {
+    let election, electionId;
+    let chainId, domain;
+    const domainName = "PrivateElectionMulti";
+    const domainVersion = "1";
+
+    beforeEach(async () => {
+      const tx = await voting.createElection(
+        "Приватне голосування з можливістю вибору декількох кандидатів",
+        ["Кандидат 1", "Кандидат 2", "Кандидат 3"],
+        0,
+        true,
+        2,
+        ElectionType.PrivateMulti
+      );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs
+        .map((log) => voting.interface.parseLog(log))
+        .find((parsed) => parsed?.name === "ElectionCreated");
+      electionAddress = event?.args.contractAddress;
+      election = await ethers.getContractAt(
+        "PrivateElectionMulti",
+        electionAddress
+      );
+      electionId = 0;
+
+      const { chainId: chain } = await ethers.provider.getNetwork();
+      chainId = chain;
+
+      domain = {
+        name: domainName,
+        version: domainVersion,
+        chainId,
+        verifyingContract: electionAddress,
+      };
+    });
+
+    it("Голосування за декількох кандидатів", async function () {
+      const candidateIds = [0, 2];
+      const voterAddress = user1.address;
+
+      const authValue = {
+        electionId: 0,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      await election.connect(user1).getFunction("vote(uint256[],bytes)")(
+        candidateIds,
+        authSignature
+      );
+
+      const elections = await voting.getAllElections();
+      expect(elections[0].coreData.candidates[0].voteCount).to.equal(1);
+      expect(elections[0].coreData.candidates[1].voteCount).to.equal(0);
+      expect(elections[0].coreData.candidates[2].voteCount).to.equal(1);
+    });
+
+    it("Голосування з підписом за декількох кандидатів", async function () {
+      const candidateIds = [0, 1];
+      const voterAddress = user1.address;
+
+      const value = {
+        electionId: 0,
+        candidateIds,
+        voter: voterAddress,
+      };
+
+      const voteSignature = await user1.signTypedData(
+        domain,
+        multiVoteTypes,
+        value
+      );
+
+      const authValue = {
+        electionId: 0,
+        voter: voterAddress,
+      };
+      const authSignature = await owner.signTypedData(
+        domain,
+        authTypes,
+        authValue
+      );
+
+      // Голосує через підпис
+      await election
+        .connect(user2)
+        .getFunction("voteWithSignature(uint256[],address,bytes,bytes)")(
+        candidateIds,
+        voterAddress,
+        voteSignature,
+        authSignature
+      );
+
+      const elections = await voting.getAllElections();
+      expect(elections[0].coreData.candidates[0].voteCount).to.equal(1);
+      expect(elections[0].coreData.candidates[1].voteCount).to.equal(1);
+      expect(elections[0].coreData.candidates[2].voteCount).to.equal(0);
     });
   });
 });
