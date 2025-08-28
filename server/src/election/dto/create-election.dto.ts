@@ -36,4 +36,10 @@ export class CreateElectionDto {
   @MinLength(3, { each: true })
   @MaxLength(25, { each: true })
   candidates: string[];
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Max(3)
+  maxChoicesPerVoter: number
 }

@@ -7,5 +7,6 @@ export interface CreateElectionParams {
     startImmediately?: boolean;
     voterLimit?: number;
     candidateNames: string[];
+    maxChoicesPerVoter?: number;
     additionalParams?: Record<string, any>;
   }

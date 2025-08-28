@@ -137,6 +137,7 @@ export class BlockchainService {
       startImmediately,
       voterLimit = 0,
       candidateNames,
+      maxChoicesPerVoter = 0,
     } = params;
     const userWallet = await this.getUserWallet(userId);
     const contractWithAdminSigner = this.contract.connect(this.adminWallet);
@@ -160,41 +161,39 @@ export class BlockchainService {
 
     const signature = await userWallet.signTypedData(domain, types, value);
 
+    let electionType;
     switch (type) {
       case ElectionType.PUBLIC_SINGLE_CHOICE:
-        try {
-          const tx =
-            await contractWithAdminSigner.createPublicElectionWithSignature(
-              name,
-              startImmediately,
-              voterLimit,
-              userWallet.address,
-              candidateNames,
-              signature,
-            );
-
-          return { txHash: tx.hash };
-        } catch (error) {
-          console.error('Election creation failed:', error);
-          throw new Error('Failed to create election on-chain');
-        }
+        electionType = 0;
+        break;
       case ElectionType.PRIVATE_SINGLE_CHOICE:
-        try {
-          const tx =
-            await contractWithAdminSigner.createPrivateElectionWithSignature(
-              name,
-              startImmediately,
-              voterLimit,
-              userWallet.address,
-              candidateNames,
-              signature,
-            );
+        electionType = 1;
+        break;
+      case ElectionType.PUBLIC_MULTI_CHOICE:
+        electionType = 2;
+        break;
+      case ElectionType.PRIVATE_MULTI_CHOICE:
+        electionType = 3;
+        break;
+    }
+    try {
+      const tx = await contractWithAdminSigner.createElectionWithSignature(
+        name,
+        startImmediately,
+        voterLimit,
+        userWallet.address,
+        candidateNames,
+        signature,
+        maxChoicesPerVoter,
+        electionType,
+      );
 
-          return { txHash: tx.hash };
-        } catch (error) {
-          console.error('Election creation failed:', error);
-          throw new Error('Failed to create election on-chain');
-        }
+      return { txHash: tx.hash };
+    } catch (err) {
+      console.error('Election creation failed:', err);
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
     }
   }
 
@@ -257,7 +256,7 @@ export class BlockchainService {
       const dbEvent = await this.prisma.events.findFirst({
         where: {
           tx_hash: txHash,
-          factory_address: process.env.CONTRACT_ADDRESS
+          factory_address: process.env.CONTRACT_ADDRESS,
         },
       });
       if (dbEvent) continue;

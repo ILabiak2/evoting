@@ -29,7 +29,7 @@ module.exports = {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   sourcify: {
-    enabled: true,
+    enabled: false,
   },
   contractSizer: {
     alphaSort: true,

@@ -49,10 +49,10 @@ describe("VotingFactory", function () {
     const PrivateElection = await ethers.getContractFactory("PrivateElection");
     privateElectionImpl = await PrivateElection.deploy();
 
-    const PubcicMultiElection = await ethers.getContractFactory(
+    const PublicMultiElection = await ethers.getContractFactory(
       "PublicElectionMulti"
     );
-    publicElectionMultiImpl = await PubcicMultiElection.deploy();
+    publicElectionMultiImpl = await PublicMultiElection.deploy();
 
     const PrivateMultiElection = await ethers.getContractFactory(
       "PrivateElectionMulti"

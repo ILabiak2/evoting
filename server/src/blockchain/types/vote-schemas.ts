@@ -1,6 +1,7 @@
 import * as PublicSingleABI from '../_abi/PublicElection.json';
 import * as PrivateSingleABI from '../_abi/PrivateElection.json';
-// import * as PublicMultiABI from '../_abi/PublicMultiElection.json'; // if you add later
+import * as PublicMultiABI from '../_abi/PublicElectionMulti.json';
+import * as PrivateMultiABI from '../_abi/PrivateElectionMulti.json';
 
 import { ElectionType } from './election-type.enum';
 import type { TypedDataField } from 'ethers';
@@ -55,6 +56,43 @@ export const VOTE_REGISTRY: Record<ElectionType, VoteConfig> = {
     },
     buildAgs: ({ voter, candidateId, voteSignature, authSignature }) => [
       candidateId,
+      voter,
+      voteSignature,
+      authSignature,
+    ],
+  },
+  [ElectionType.PUBLIC_MULTI_CHOICE]: {
+    abi: PublicMultiABI,
+    method: 'voteWithSignature',
+    structName: 'VotePublicMultiChoice',
+    domainName: 'PublicElectionMulti',
+    types: {
+      Vote: [
+        { name: 'electionId', type: 'uint256' },
+        { name: 'candidateIds', type: 'uint256[]' },
+        { name: 'voter', type: 'address' },
+      ],
+    },
+    buildAgs: ({ voter, candidateIds, voteSignature }) => [
+      candidateIds,
+      voter,
+      voteSignature,
+    ],
+  },
+  [ElectionType.PRIVATE_MULTI_CHOICE]: {
+    abi: PrivateMultiABI,
+    method: 'voteWithSignature(uint256[],address,bytes,bytes)',
+    structName: 'VotePrivateMultiChoice',
+    domainName: 'PrivateElectionMulti',
+    types: {
+      Vote: [
+        { name: 'electionId', type: 'uint256' },
+        { name: 'candidateIds', type: 'uint256[]' },
+        { name: 'voter', type: 'address' },
+      ],
+    },
+    buildAgs: ({ voter, candidateIds, voteSignature, authSignature }) => [
+      candidateIds,
       voter,
       voteSignature,
       authSignature,

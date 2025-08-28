@@ -56,6 +56,8 @@ model wallets {
 enum ElectionType {
   public_single_choice
   private_single_choice
+  public_multi_choice
+  private_multi_choice
 }
 
 model elections_metadata {

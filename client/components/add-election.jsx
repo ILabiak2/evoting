@@ -115,6 +115,12 @@ export default function AddElection() {
                 <SelectItem value="private_single_choice">
                   Private Single Choice
                 </SelectItem>
+                <SelectItem value="public_multi_choice">
+                  Public Multi Choice
+                </SelectItem>
+                <SelectItem value="private_multi_choice">
+                  Private Multi Choice
+                </SelectItem>
               </SelectContent>
             </Select>
           </LabelInputContainer>

@@ -28,8 +28,14 @@ export class ElectionService {
   ) {}
 
   create(createElectionDto: CreateElectionDto, userId: string) {
-    const { name, voterLimit, startImmediately, candidates, type } =
-      createElectionDto;
+    const {
+      name,
+      voterLimit,
+      startImmediately,
+      candidates,
+      type,
+      maxChoicesPerVoter,
+    } = createElectionDto;
     return this.blockchain.createElectionWithSignature({
       userId,
       type,
@@ -37,6 +43,7 @@ export class ElectionService {
       startImmediately,
       voterLimit,
       candidateNames: candidates,
+      maxChoicesPerVoter,
     });
   }
 
@@ -97,7 +104,7 @@ export class ElectionService {
   }
 
   async checkVoteStatus(txHash: string, userId: string) {
-    const status =  await this.blockchain.checkUserVoted(txHash);
+    const status = await this.blockchain.checkUserVoted(txHash);
     if (status.confirmed) {
       this.blockchain.parseEvents(txHash, userId).catch((err) => {
         this.logger.error('Failed to get transaction events', err);
@@ -107,7 +114,7 @@ export class ElectionService {
   }
 
   async checkTxStatus(txHash: string, userId: string) {
-    const status =  await this.blockchain.getTransactionStatus(txHash);
+    const status = await this.blockchain.getTransactionStatus(txHash);
     if (status.confirmed) {
       this.blockchain.parseEvents(txHash, userId).catch((err) => {
         this.logger.error('Failed to get transaction events', err);

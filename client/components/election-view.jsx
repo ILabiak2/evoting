@@ -18,6 +18,8 @@ import {
 const ElectionType = {
   public_single_choice: "Public (Single Choice)",
   private_single_choice: "Private (Single Choice)",
+  public_multi_choice: "Public (Multi Choice)",
+  private_multi_choice: "Private (Multi Choice)",
 };
 
 export default function ElectionView({ address }) {
