@@ -1,6 +1,4 @@
 import { Interface } from 'ethers';
-import * as VotingFactoryABI from './_abi/VotingFactory.json';
-import * as PublicElectionFactoryABI from './_abi/PublicElection.json';
 
 function toAbiArray(mod) {
   const m = mod?.default ?? mod;
@@ -72,20 +70,3 @@ export async function decodeTxWithUnionAbi({ provider, txHash, unionAbi }) {
   }
   return out;
 }
-
-// (async () => {
-//   const unionAbi = mergeEventOnlyAbi([
-//     VotingFactoryABI,
-//     PublicElectionFactoryABI,
-//   ]);
-
-//   const provider = new JsonRpcProvider('https://sepolia-rollup.arbitrum.io/rpc');
-//   // console.log(JSON.stringify(unionAbi,null,2))
-//   const decoded = await decodeTxWithUnionAbi({
-//     provider,
-//     txHash:
-//       '0x910701c1164b84e6ab9e60fe01262c293dc2d69fc68a7887525c8fccb13cf2c9',
-//     unionAbi,
-//   });
-//   console.log(decoded);
-// })();

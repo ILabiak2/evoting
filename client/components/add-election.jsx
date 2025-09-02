@@ -25,6 +25,7 @@ export default function AddElection() {
   const [electionName, setElectionName] = useState("");
   const [voterLimit, setVoterLimit] = useState("");
   const [candidateName, setCandidateName] = useState("");
+  const [maxChoices, setMaxChoices] = useState("2");
   const [txHash, setTxHash] = useState(null);
   const createElection = useCreateElection();
   const {
@@ -57,6 +58,7 @@ export default function AddElection() {
         name: candidateName,
       },
     ]);
+    setCandidateName("");
     setAddCandidateLoading(false);
   };
 
@@ -70,6 +72,13 @@ export default function AddElection() {
         startImmediately,
         candidates: candidates.map((el) => el.name),
       };
+
+      const isMulti =
+        type === "public_multi_choice" || type === "private_multi_choice";
+      if (isMulti) {
+        const maxChoicesNum = Math.max(2, parseInt(maxChoices || "1", 10) || 1);
+        data.maxChoicesPerVoter = maxChoicesNum;
+      }
 
       const result = await createElection.mutateAsync(data);
       setTxHash(result.txHash);
@@ -157,6 +166,35 @@ export default function AddElection() {
               min="0"
             />
           </LabelInputContainer>
+          {(type === "public_multi_choice" ||
+            type === "private_multi_choice") && (
+            <LabelInputContainer className="mb-4">
+              <Label htmlFor="maxChoices">Max choices per voter</Label>
+              <span className="text-neutral-400 text-sm">
+                User can select up to this many candidates
+              </span>
+              <Input
+                id="maxChoices"
+                name="maxChoices"
+                type="number"
+                inputMode="numeric"
+                min="2"
+                value={maxChoices}
+                onChange={(e) => {
+                  setLoading(false);
+                  setErrorMessage("");
+                  setErrors([]);
+                  const v = e.target.value;
+                  if (v === "" || /^\d+$/.test(v)) setMaxChoices(v);
+                }}
+                onBlur={() => {
+                  const n = Math.max(2, parseInt(maxChoices || "1", 10) || 1);
+                  setMaxChoices(String(n));
+                }}
+                placeholder="e.g. 3"
+              />
+            </LabelInputContainer>
+          )}
           <div className="md:mb-10 flex items-center space-x-2">
             <input
               id="startImmediately"
@@ -180,12 +218,7 @@ export default function AddElection() {
       </div>
 
       <div className="w-full md:shadow-input md:dark:shadow-neutral-900 order-3 md:order-2  border-0 z-20 md:mt-5 md:mx-5 md:max-w-md rounded-2xl p-4 md:p-8 ">
-        <form
-          className=" flex  flex-col justify-between"
-          onSubmit={() => {
-            console.log("123");
-          }}
-        >
+        <form className=" flex  flex-col justify-between" onSubmit={() => {}}>
           <div className="">
             <h2 className="text-3xl font-bold text-neutral-800 dark:text-neutral-200">
               Candidates

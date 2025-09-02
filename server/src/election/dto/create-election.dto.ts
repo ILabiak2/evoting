@@ -39,7 +39,7 @@ export class CreateElectionDto {
 
   @IsNumber()
   @IsOptional()
-  @Min(0)
-  @Max(3)
+  @Min(2)
+  @Max(10)
   maxChoicesPerVoter: number
 }
