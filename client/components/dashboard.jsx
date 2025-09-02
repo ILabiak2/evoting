@@ -72,7 +72,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-        {elections?.length > 0 && (
+        {user?.role === "user" && elections?.length > 0 && (
           <div className="flex flex-row md:justify-end gap-4 mb-2 md:mb-5">
             <JoinElection />
           </div>
