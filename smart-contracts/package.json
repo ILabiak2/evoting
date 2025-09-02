@@ -3,19 +3,21 @@
     "clean": "rm -rf artifacts cache ../server/src/blockchain/_types",
     "compile": "hardhat compile",
     "types": "typechain --target ethers-v6 --out-dir ../server/src/blockchain/_types artifacts/contracts/**/*[!dbg].json",
-    "abis": "tsx scripts/export-abis.ts ../server/src/blockchain/_abi",
+    "abis": "npx tsx scripts/export-abis.ts ../server/src/blockchain/_abi",
     "build": "npm run clean && npm run compile && npm run types && npm run abis"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.26.2",
     "hardhat-contract-sizer": "^2.10.0",
-    "hardhat-tracer": "^3.2.1"
+    "hardhat-tracer": "^3.2.1",
+    "tsx": "^4.20.5"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "dotenv": "^17.0.1",
+    "glob": "^11.0.3",
     "openzeppelin-solidity": "^4.8.1"
   }
 }

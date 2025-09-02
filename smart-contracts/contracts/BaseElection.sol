@@ -19,6 +19,7 @@ abstract contract BaseElection {
     uint256 public voterLimit;
     uint256 public voterCount;
     uint256 public createdAt;
+    uint256 public maxChoicesPerVoter;
 
     struct Candidate {
         uint256 id;
@@ -103,13 +104,15 @@ abstract contract BaseElection {
         address _admin,
         uint256 _electionId,
         uint256 _voterLimit,
-        bool _startImmediately
+        bool _startImmediately,
+        uint256 _maxChoicesPerVoter
     ) internal {
         name = _name;
         admin = _admin;
         creator = _creator;
         electionId = _electionId;
         voterLimit = _voterLimit;
+        maxChoicesPerVoter = _maxChoicesPerVoter;
         createdAt = block.timestamp;
 
         if (_startImmediately) {
@@ -293,6 +296,7 @@ abstract contract BaseElection {
                 ended: ended,
                 candidateCount: candidates.length,
                 voterLimit: voterLimit,
+                maxChoicesPerVoter: maxChoicesPerVoter,
                 candidates: list
             });
     }

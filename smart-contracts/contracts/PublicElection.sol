@@ -28,7 +28,8 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
             _admin,
             _electionId,
             _voterLimit,
-            _startImmediately
+            _startImmediately,
+            1
         );
 
         __EIP712_init("PublicElection", "1");

@@ -118,7 +118,6 @@ model events {
   user            users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   election_meta   elections_metadata @relation(fields: [election_id], references: [id])
 
-  @@unique([user_id, tx_hash])
   @@index([tx_hash, factory_address])
   @@index([user_id])
   @@index([election_id])

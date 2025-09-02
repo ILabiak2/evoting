@@ -22,7 +22,8 @@ contract PrivateElection is PublicElection {
             _admin,
             _electionId,
             _voterLimit,
-            _startImmediately
+            _startImmediately,
+            1
         );
     }
 

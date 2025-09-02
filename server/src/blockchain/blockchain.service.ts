@@ -76,6 +76,7 @@ export class BlockchainService {
       ended,
       candidateCount,
       voterLimit,
+      maxChoicesPerVoter,
       candidates: candidatesRaw,
     } = coreData;
 
@@ -103,6 +104,7 @@ export class BlockchainService {
       contractAddress,
       candidates,
       totalVotes,
+      maxChoicesPerVoter: Number(maxChoicesPerVoter),
     };
   }
 
@@ -223,6 +225,11 @@ export class BlockchainService {
       if (!event.parsed) continue;
       let description = '';
       // console.log(event);
+      // console.log({
+      //   contractAdr: event.args.contractAddress,
+      //   adr: event.address,
+      //   res: event.args.contractAddress || event.address,
+      // });
       const { name, candidates, id } = await this.getElectionData(
         event.args.contractAddress || event.address,
         userId,
@@ -231,7 +238,7 @@ export class BlockchainService {
         case 'VoteCast':
           description = `Casted vote to candidate ${candidates[event.args.candidateId]?.name} in election ${name}`;
           break;
-        case 'CandidateAdded': //need to test after updating smart contract code
+        case 'CandidateAdded':
           description = `Added candidate ${event.args.name} to election ${name}`;
           break;
         case 'CandidateRemoved':
@@ -253,14 +260,15 @@ export class BlockchainService {
           console.log('Unknown event: ' + event.event);
           continue;
       }
-      const dbEvent = await this.prisma.events.findFirst({
+      const dbEvents = await this.prisma.events.findMany({
         where: {
           tx_hash: txHash,
           factory_address: process.env.CONTRACT_ADDRESS,
         },
       });
-      if (dbEvent) continue;
-      const meta = await this.prisma.elections_metadata.findFirst({
+      if (dbEvents && dbEvents.find((e) => e.description == description))
+        continue;
+      const meta = await this.prisma.elections_metadata.findUnique({
         where: {
           election_address: event.args.contractAddress || event.address,
         },
@@ -278,7 +286,7 @@ export class BlockchainService {
           time: new Date(event.timestamp * 1000),
         },
       });
-      console.log('Event added');
+      console.log(`Event ${event.event} added`);
     }
   }
 
@@ -433,7 +441,7 @@ export class BlockchainService {
     const chainId = Number(network.chainId);
 
     const domain = {
-      name: '',
+      name: cfg.domainName,
       version: '1',
       chainId,
       verifyingContract: electionAddress,
@@ -444,106 +452,290 @@ export class BlockchainService {
       cfg.abi as any,
       this.adminWallet,
     );
-    domain.name = cfg.domainName;
 
-    switch (electionType) {
-      case 'public_single_choice':
-        value = {
-          electionId,
-          candidateId,
-          voter: voterWallet.address,
-        };
+    const isPrivate = String(electionType).startsWith('private');
+    const isMulti = String(electionType).includes('multi');
 
-        voteSignature = await voterWallet.signTypedData(
-          domain,
-          voteTypes,
-          value,
-        );
-        break;
-      case 'private_single_choice':
-        value = {
-          electionId,
-          candidateId,
-          voter: voterWallet.address,
-        };
+    if (isPrivate) {
+      const meta = await this.prisma.elections_metadata.findFirst({
+        where: {
+          election_address: electionAddress,
+          factory_address: process.env.CONTRACT_ADDRESS,
+        },
+        select: { id: true },
+      });
+      if (!meta) throw new NotFoundException('Election metadata not found');
 
-        {
-          const meta = await this.prisma.elections_metadata.findFirst({
-            where: {
-              election_address: electionAddress,
-              factory_address: process.env.CONTRACT_ADDRESS,
-            },
-            select: { id: true },
-          });
-          if (!meta) throw new NotFoundException('Election metadata not found');
-
-          const membership = await this.prisma.user_elections.findUnique({
-            where: {
-              user_id_election_id: {
-                user_id: userId,
-                election_id: meta.id,
-              },
-            },
-            select: { id: true },
-          });
-          if (!membership) {
-            throw new ForbiddenException(
-              'You are not permitted to vote in this private election',
-            );
-          }
-        }
-
-        voteSignature = await voterWallet.signTypedData(
-          domain,
-          voteTypes,
-          value,
-        );
-
-        const creatorWalletRow = await this.prisma.wallets.findFirst({
-          where: {
-            public_address: {
-              equals: creator,
-              mode: 'insensitive',
-            },
+      const membership = await this.prisma.user_elections.findUnique({
+        where: {
+          user_id_election_id: {
+            user_id: userId,
+            election_id: meta.id,
           },
-          select: { vault_key_name: true },
-        });
-        if (!creatorWalletRow?.vault_key_name) {
-          throw new NotFoundException(
-            'Creator wallet not found for this election',
-          );
-        }
-        const creatorPrivateKey = await this.azureKeyVaultService.getPrivateKey(
-          creatorWalletRow.vault_key_name,
+        },
+        select: { id: true },
+      });
+      if (!membership) {
+        throw new ForbiddenException(
+          'You are not permitted to vote in this private election',
         );
-        const creatorOwnerWallet = new ethers.Wallet(
-          creatorPrivateKey,
-          this.provider,
+      }
+      const creatorWalletRow = await this.prisma.wallets.findFirst({
+        where: {
+          public_address: {
+            equals: creator,
+            mode: 'insensitive',
+          },
+        },
+        select: { vault_key_name: true },
+      });
+      if (!creatorWalletRow?.vault_key_name) {
+        throw new NotFoundException(
+          'Creator wallet not found for this election',
         );
+      }
+      const creatorPrivateKey = await this.azureKeyVaultService.getPrivateKey(
+        creatorWalletRow.vault_key_name,
+      );
+      const creatorOwnerWallet = new ethers.Wallet(
+        creatorPrivateKey,
+        this.provider,
+      );
 
-        const authTypes = {
-          Auth: [
-            { name: 'electionId', type: 'uint256' },
-            { name: 'voter', type: 'address' },
-          ],
-        };
-        const authValue = {
-          electionId: electionId,
-          voter: voterWallet.address,
-        };
+      const authTypes = {
+        Auth: [
+          { name: 'electionId', type: 'uint256' },
+          { name: 'voter', type: 'address' },
+        ],
+      };
+      const authValue = {
+        electionId: electionId,
+        voter: voterWallet.address,
+      };
 
-        authSignature = await creatorOwnerWallet.signTypedData(
-          domain,
-          authTypes,
-          authValue,
-        );
-        break;
-      default:
+      authSignature = await creatorOwnerWallet.signTypedData(
+        domain,
+        authTypes,
+        authValue,
+      );
     }
+
+    if (isMulti) {
+      if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
+        throw new BadRequestException(
+          'candidateIds must be a non-empty array for multi-choice elections',
+        );
+      }
+      value = {
+        electionId,
+        candidateIds,
+        voter: voterWallet.address,
+      };
+    } else {
+      if (typeof candidateId !== 'number') {
+        throw new BadRequestException(
+          'candidateId must be provided for single-choice elections',
+        );
+      }
+      value = {
+        electionId,
+        candidateId,
+        voter: voterWallet.address,
+      };
+    }
+
+    voteSignature = await voterWallet.signTypedData(domain, voteTypes, value);
+
+    // switch (electionType) {
+    //   case 'public_single_choice':
+    //     value = {
+    //       electionId,
+    //       candidateId,
+    //       voter: voterWallet.address,
+    //     };
+
+    //     voteSignature = await voterWallet.signTypedData(
+    //       domain,
+    //       voteTypes,
+    //       value,
+    //     );
+    //     break;
+    //   case 'private_single_choice':
+    //     value = {
+    //       electionId,
+    //       candidateId,
+    //       voter: voterWallet.address,
+    //     };
+    //     {
+    //       const meta = await this.prisma.elections_metadata.findFirst({
+    //         where: {
+    //           election_address: electionAddress,
+    //           factory_address: process.env.CONTRACT_ADDRESS,
+    //         },
+    //         select: { id: true },
+    //       });
+    //       if (!meta) throw new NotFoundException('Election metadata not found');
+
+    //       const membership = await this.prisma.user_elections.findUnique({
+    //         where: {
+    //           user_id_election_id: {
+    //             user_id: userId,
+    //             election_id: meta.id,
+    //           },
+    //         },
+    //         select: { id: true },
+    //       });
+    //       if (!membership) {
+    //         throw new ForbiddenException(
+    //           'You are not permitted to vote in this private election',
+    //         );
+    //       }
+    //     }
+
+    //     voteSignature = await voterWallet.signTypedData(
+    //       domain,
+    //       voteTypes,
+    //       value,
+    //     );
+
+    //     const creatorWalletRow = await this.prisma.wallets.findFirst({
+    //       where: {
+    //         public_address: {
+    //           equals: creator,
+    //           mode: 'insensitive',
+    //         },
+    //       },
+    //       select: { vault_key_name: true },
+    //     });
+    //     if (!creatorWalletRow?.vault_key_name) {
+    //       throw new NotFoundException(
+    //         'Creator wallet not found for this election',
+    //       );
+    //     }
+    //     const creatorPrivateKey = await this.azureKeyVaultService.getPrivateKey(
+    //       creatorWalletRow.vault_key_name,
+    //     );
+    //     const creatorOwnerWallet = new ethers.Wallet(
+    //       creatorPrivateKey,
+    //       this.provider,
+    //     );
+
+    //     const authTypes = {
+    //       Auth: [
+    //         { name: 'electionId', type: 'uint256' },
+    //         { name: 'voter', type: 'address' },
+    //       ],
+    //     };
+    //     const authValue = {
+    //       electionId: electionId,
+    //       voter: voterWallet.address,
+    //     };
+
+    //     authSignature = await creatorOwnerWallet.signTypedData(
+    //       domain,
+    //       authTypes,
+    //       authValue,
+    //     );
+    //     break;
+    //   case 'public_multi_choice':
+    //     value = {
+    //       electionId,
+    //       candidateIds,
+    //       voter: voterWallet.address,
+    //     };
+
+    //     voteSignature = await voterWallet.signTypedData(
+    //       domain,
+    //       voteTypes,
+    //       value,
+    //     );
+    //     break;
+    //   case 'private_multi_choice': {
+    //     value = {
+    //       electionId,
+    //       candidateIds,
+    //       voter: voterWallet.address,
+    //     };
+
+    //     {
+    //       const meta = await this.prisma.elections_metadata.findFirst({
+    //         where: {
+    //           election_address: electionAddress,
+    //           factory_address: process.env.CONTRACT_ADDRESS,
+    //         },
+    //         select: { id: true },
+    //       });
+    //       if (!meta) throw new NotFoundException('Election metadata not found');
+
+    //       const membership = await this.prisma.user_elections.findUnique({
+    //         where: {
+    //           user_id_election_id: {
+    //             user_id: userId,
+    //             election_id: meta.id,
+    //           },
+    //         },
+    //         select: { id: true },
+    //       });
+    //       if (!membership) {
+    //         throw new ForbiddenException(
+    //           'You are not permitted to vote in this private election',
+    //         );
+    //       }
+    //     }
+
+    //     voteSignature = await voterWallet.signTypedData(
+    //       domain,
+    //       voteTypes,
+    //       value,
+    //     );
+
+    //     const creatorWalletRow = await this.prisma.wallets.findFirst({
+    //       where: {
+    //         public_address: {
+    //           equals: creator,
+    //           mode: 'insensitive',
+    //         },
+    //       },
+    //       select: { vault_key_name: true },
+    //     });
+    //     if (!creatorWalletRow?.vault_key_name) {
+    //       throw new NotFoundException(
+    //         'Creator wallet not found for this election',
+    //       );
+    //     }
+    //     const creatorPrivateKey = await this.azureKeyVaultService.getPrivateKey(
+    //       creatorWalletRow.vault_key_name,
+    //     );
+    //     const creatorOwnerWallet = new ethers.Wallet(
+    //       creatorPrivateKey,
+    //       this.provider,
+    //     );
+
+    //     const authTypes = {
+    //       Auth: [
+    //         { name: 'electionId', type: 'uint256' },
+    //         { name: 'voter', type: 'address' },
+    //       ],
+    //     };
+    //     const authValue = {
+    //       electionId: electionId,
+    //       voter: voterWallet.address,
+    //     };
+
+    //     authSignature = await creatorOwnerWallet.signTypedData(
+    //       domain,
+    //       authTypes,
+    //       authValue,
+    //     );
+    //     break;
+    //   }
+    //   default:
+    // }
 
     try {
       const args = cfg.buildAgs({
         candidateId: value.candidateId,
+        candidateIds: value.candidateIds,
         voter: value.voter,
         voteSignature,
         authSignature,

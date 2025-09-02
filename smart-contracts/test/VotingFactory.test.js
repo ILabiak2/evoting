@@ -1393,7 +1393,7 @@ describe("VotingFactory", function () {
           0,
           ElectionType.PublicMulti
         )
-      ).to.be.revertedWith("maxChoices must be > 0");
+      ).to.be.revertedWith("maxChoices must be > 1");
 
       const data = await voting.getAllElections();
 

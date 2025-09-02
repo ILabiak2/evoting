@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useElectionData } from "@/lib/hooks/useElectionData";
@@ -97,6 +97,27 @@ export default function ElectionView({ address }) {
   const handleCopyAddress = (text) => {
     navigator.clipboard.writeText(text);
   };
+
+  // Multi-choice UX state
+  const isMulti = String(election?.electionType || "").includes("multi");
+  const maxChoices = Number(election?.maxChoicesPerVoter || 0) || 0;
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  useEffect(() => {
+    // Reset selection when election changes
+    setSelectedIds([]);
+  }, [election?.contractAddress]);
+
+  const toggleSelect = (cid) => {
+    setSelectedIds((prev) => {
+      const has = prev.includes(cid);
+      if (has) return prev.filter((x) => x !== cid);
+      if (maxChoices && prev.length >= maxChoices) return prev; // cap
+      return [...prev, cid];
+    });
+  };
+
+  const atMax = maxChoices > 0 && selectedIds.length >= maxChoices;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -242,6 +263,10 @@ export default function ElectionView({ address }) {
                         <span className="font-medium text-right md:mr-10">
                           Your vote
                         </span>
+                      ) : isMulti && !election?.isCreator ? (
+                        <span className="font-medium text-right md:mr-10">
+                          Select
+                        </span>
                       ) : (
                         <span className="font-medium text-right mr-8 md:mr-10">
                           Action
@@ -304,15 +329,41 @@ export default function ElectionView({ address }) {
                                     </span>
                                   )}
                                 </div>
+                              ) : isMulti ? (
+                                <div className="flex items-center justify-end text-right mr-2 md:mr-12">
+                                  <input
+                                    type="checkbox"
+                                    className="h-6 w-6 cursor-pointer"
+                                    checked={selectedIds.includes(candidate.id)}
+                                    onChange={() => toggleSelect(candidate.id)}
+                                    disabled={
+                                      (!selectedIds.includes(candidate.id) &&
+                                        atMax) ||
+                                      !election?.isActive ||
+                                      (String(election?.electionType).includes(
+                                        "private"
+                                      ) &&
+                                        !election.isParticipant)
+                                    }
+                                    title={
+                                      !selectedIds.includes(candidate.id) &&
+                                      atMax
+                                        ? `You can choose up to ${maxChoices}`
+                                        : "Select candidate"
+                                    }
+                                  />
+                                </div>
                               ) : (
                                 <VoteButton
                                   candidateId={candidate.id}
-                                  candidateName={candidate.name}
+                                  candidates={election.candidates}
                                   electionAddress={election.contractAddress}
                                   disabled={
-                                    String(election?.electionType).includes(
+                                    (String(election?.electionType).includes(
                                       "private"
-                                    ) && !election.isParticipant
+                                    ) &&
+                                      !election.isParticipant) ||
+                                    !election?.isActive
                                   }
                                 />
                               )}
@@ -323,6 +374,22 @@ export default function ElectionView({ address }) {
                     ))}
                   </div>
                 </div>
+                {isMulti && !election?.isCreator && !election?.hasVoted && (
+                  <div className="mt-4 w-full flex justify-end">
+                    <VoteButton
+                      candidateIds={selectedIds}
+                      candidates={election.candidates}
+                      maxChoices={maxChoices}
+                      electionAddress={election.contractAddress}
+                      disabled={
+                        (String(election?.electionType).includes("private") &&
+                          !election.isParticipant) ||
+                        !election?.isActive ||
+                        selectedIds.length === 0
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}

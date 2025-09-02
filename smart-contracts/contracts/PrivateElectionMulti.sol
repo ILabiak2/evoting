@@ -20,6 +20,7 @@ contract PrivateElectionMulti is PublicElectionMulti {
         bool _startImmediately,
         uint256 _maxChoicesPerVoter
     ) public override initializer {
+        require(_maxChoicesPerVoter > 1, "maxChoices must be > 1");
         __BaseElection_init(
             _name,
             _candidateNames,
@@ -27,11 +28,11 @@ contract PrivateElectionMulti is PublicElectionMulti {
             _admin,
             _electionId,
             _voterLimit,
-            _startImmediately
+            _startImmediately,
+            _maxChoicesPerVoter
         );
         __EIP712_init("PrivateElectionMulti", "1");
-        require(_maxChoicesPerVoter > 0, "maxChoices must be > 0");
-        maxChoicesPerVoter = _maxChoicesPerVoter;
+        
     }
 
     function vote(uint256[] calldata /*candidateIds*/) external pure override {

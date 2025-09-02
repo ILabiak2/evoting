@@ -4,7 +4,14 @@ import { useVoteStatus } from "@/lib/hooks/useVoteStatus";
 import { useVoteInElection } from "@/lib/hooks/useVoteInElection";
 import { Check, X } from "lucide-react";
 
-export const VoteButton = ({ candidateId, candidateName, electionAddress, disabled }) => {
+export const VoteButton = ({
+  candidateId,
+  candidateIds,
+  candidates,
+  maxChoices,
+  electionAddress,
+  disabled,
+}) => {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false); // true only while sending tx
   const [errorMessage, setErrorMessage] = useState("");
@@ -34,7 +41,7 @@ export const VoteButton = ({ candidateId, candidateName, electionAddress, disabl
     try {
       const res = await voteMutation.mutateAsync({
         address: electionAddress,
-        voteData: { candidateId },
+        voteData: candidateIds?.length > 0 ? { candidateIds } : { candidateId },
       });
       if (res?.txHash) {
         setTxHash(res.txHash);
@@ -52,9 +59,17 @@ export const VoteButton = ({ candidateId, candidateName, electionAddress, disabl
     <div className="flex items-center justify-end text-right">
       <button
         onClick={handleOpenConfirm}
-        disabled={disabled || voteMutation.isPending || confirming || (txHash && !confirmed)}
+        disabled={
+          disabled ||
+          voteMutation.isPending ||
+          confirming ||
+          (txHash && !confirmed)
+        }
         className={`flex-1 w-24 max-h-20 transform max-md:text-xs rounded-lg border-1 px-6 py-2 font-medium transition-all duration-300 md:w-32 md:max-w-32 border-neutral-800 dark:border-neutral-200 ${
-          disabled || voteMutation.isPending || confirming || (txHash && !confirmed)
+          disabled ||
+          voteMutation.isPending ||
+          confirming ||
+          (txHash && !confirmed)
             ? "cursor-not-allowed opacity-50 bg-black text-white dark:bg-white dark:text-black"
             : "cursor-pointer bg-black text-white hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
         }`}
@@ -70,7 +85,9 @@ export const VoteButton = ({ candidateId, candidateName, electionAddress, disabl
           ? "Voting..."
           : txHash && !confirmed
             ? "Pending…"
-            : "Vote"}
+            : candidateIds?.length > 0
+              ? `Vote (${candidateIds.length}${maxChoices ? `/${maxChoices}` : ""})`
+              : "Vote"}
       </button>
 
       {open && (
@@ -87,7 +104,11 @@ export const VoteButton = ({ candidateId, candidateName, electionAddress, disabl
                 {errorMessage
                   ? "Could not vote"
                   : txHash
-                    ? (statusError ? "Could not verify" : confirmed ? "Vote confirmed" : "Submitting your vote…")
+                    ? statusError
+                      ? "Could not verify"
+                      : confirmed
+                        ? "Vote confirmed"
+                        : "Submitting your vote…"
                     : "Confirm your vote"}
               </h3>
               <button
@@ -114,9 +135,24 @@ export const VoteButton = ({ candidateId, candidateName, electionAddress, disabl
                 {!txHash ? (
                   <div className="text-sm space-y-4">
                     <p>
-                      You are about to cast your vote for candidate
-                      {" "}
-                      <span className="font-semibold">{candidateName}</span>.
+                      You are about to cast your vote for{" "}
+                      {candidateIds?.length > 0 ? (
+                        <span className="font-semibold">
+                          {candidateIds
+                            .map(
+                              (id) =>
+                                candidates.find((c) => c.id === id)?.name ||
+                                `Candidate ${id}`
+                            )
+                            .join(", ")}
+                        </span>
+                      ) : (
+                        <span className="font-semibold">
+                          {candidates.find((c) => c.id === candidateId)?.name ||
+                            candidateName}
+                        </span>
+                      )}
+                      .
                     </p>
                     <div className="flex justify-end gap-2">
                       <button
@@ -170,7 +206,9 @@ export const VoteButton = ({ candidateId, candidateName, electionAddress, disabl
                       <div>Candidate ID: {statusData.candidateId}</div>
                     )}
                     {Array.isArray(statusData?.candidateIds) && (
-                      <div>Candidate IDs: {statusData.candidateIds.join(", ")}</div>
+                      <div>
+                        Candidate IDs: {statusData.candidateIds.join(", ")}
+                      </div>
                     )}
                   </div>
                 )}

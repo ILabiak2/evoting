@@ -92,14 +92,23 @@ export class ElectionService {
 
   async checkElectionStatus(txHash: string, userId: string) {
     const status = await this.blockchain.checkElectionCreated(txHash);
+
     if (status.confirmed) {
-      this.addElectionMetadata(status.electionId).catch((err) => {
-        this.logger.error('Failed to add election metadata', err);
-      });
-      this.blockchain.parseEvents(txHash, userId).catch((err) => {
-        this.logger.error('Failed to get transaction events', err);
-      });
+      void (async () => {
+        try {
+          await this.addElectionMetadata(status.electionId);
+        } catch (err) {
+          this.logger.error('Failed to add election metadata', err);
+        }
+
+        try {
+          await this.blockchain.parseEvents(txHash, userId);
+        } catch (err) {
+          this.logger.error('Failed to get transaction events', err);
+        }
+      })();
     }
+
     return status;
   }
 
@@ -201,7 +210,7 @@ export class ElectionService {
       select: { id: true, election_type: true, creator: true },
     });
     if (!election) throw new NotFoundException('Election not found');
-    if (election.election_type !== 'private_single_choice') {
+    if (!election.election_type.startsWith('private')) {
       throw new BadRequestException(
         'Invites can only be generated for private elections',
       );

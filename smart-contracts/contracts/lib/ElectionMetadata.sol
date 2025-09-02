@@ -20,6 +20,7 @@ library ElectionMetadata {
         bool ended;
         uint256 candidateCount;
         uint256 voterLimit;
+        uint256 maxChoicesPerVoter;
         CandidateView[] candidates;
     }
 }

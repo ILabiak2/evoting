@@ -8,7 +8,7 @@ import "./BaseElection.sol";
 
 contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
     bool private initialized;
-    uint256 public maxChoicesPerVoter;
+    // uint256 public maxChoicesPerVoter;
 
     function initialize(
         string memory _name,
@@ -21,7 +21,7 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
         uint256 _maxChoicesPerVoter
     ) external virtual initializer {
         require(!initialized, "Already initialized");
-        require(_maxChoicesPerVoter > 0, "maxChoices must be > 0");
+        require(_maxChoicesPerVoter > 1, "maxChoices must be > 1");
         initialized = true;
 
         __BaseElection_init(
@@ -31,11 +31,12 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
             _admin,
             _electionId,
             _voterLimit,
-            _startImmediately
+            _startImmediately,
+            _maxChoicesPerVoter
         );
 
         __EIP712_init("PublicElectionMulti", "1");
-        maxChoicesPerVoter = _maxChoicesPerVoter;
+        // maxChoicesPerVoter = _maxChoicesPerVoter;
     }
 
     struct Vote {
