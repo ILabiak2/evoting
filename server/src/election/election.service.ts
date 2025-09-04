@@ -12,6 +12,7 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { N } from 'ethers';
 
 @Injectable()
 export class ElectionService {
@@ -436,6 +437,27 @@ export class ElectionService {
       const { txHash } = await this.blockchain.stopElection(
         electionAddress,
         userId,
+      );
+      return { txHash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
+    }
+  }
+
+  async editElectionName(
+    electionAddress: string,
+    newName: string,
+    userId: string,
+  ) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    try {
+      const { txHash } = await this.blockchain.editElectionName(
+        electionAddress,
+        userId,
+        newName,
       );
       return { txHash };
     } catch (err: any) {

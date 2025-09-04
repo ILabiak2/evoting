@@ -6,3 +6,4 @@ export { StartButton } from "./start-button";
 export { EditCandidateButton } from "./edit-candidate-button";
 export { AddCandidateButton } from "./add-candidate-button";
 export { DeleteCandidateButton } from "./delete-candidate-button";
+export { EditElectionNameButton } from "./edit-election-button";

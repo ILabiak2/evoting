@@ -256,6 +256,17 @@ export class BlockchainService {
         case 'ElectionCreated':
           description = `Election ${name} created`;
           break;
+        case 'ElectionRenamed':
+          description = `Election name was changed from ${event.args.oldName} to ${event.args.newName}`;
+          break;
+        case 'EndTimeUpdated':
+          if (event.args?.newEndTime == 0) {
+            description = `Election ${name} end time was removed. Creator will be able to end it manually`;
+          } else {
+            const date = new Date(event.args.newEndTime * 1000);
+            description = `Election ${name} end time was set to  ${date.toLocaleString('en-GB', { timeZone: 'UTC' })}`;
+          }
+          break;
         default:
           console.log('Unknown event: ' + event.event);
           continue;
@@ -623,6 +634,41 @@ export class BlockchainService {
 
     try {
       const tx = await electionContract.endElection();
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      console.error(err);
+      throw new Error(msg);
+    }
+  }
+
+  async editElectionName(address: string, userId: string, newName: string) {
+    const creatorWallet = await this.getUserWallet(userId);
+
+    const { name, electionType, isActive, creator } =
+      await this.getElectionData(address, userId);
+
+    if (isActive) throw new Error('Election has already started');
+    if (creator != creatorWallet.address)
+      throw new ForbiddenException('Only creator can start the election');
+    if (name == newName) throw new Error('Election already has the same name');
+    if (name.length < 3 || name.length > 30)
+      throw new Error('Name should be 3 to 30 characters long');
+
+    const cfg = VOTE_REGISTRY[electionType as any];
+    if (!cfg) {
+      throw new Error(`Unsupported election type: ${electionType}`);
+    }
+
+    const electionContract = new ethers.Contract(
+      address,
+      cfg.abi as any,
+      this.adminWallet,
+    );
+
+    try {
+      const tx = await electionContract.editElectionName(newName);
       return { txHash: tx.hash };
     } catch (err: any) {
       const msg =

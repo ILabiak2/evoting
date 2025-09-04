@@ -119,6 +119,16 @@ export class ElectionController {
     return this.electionService.stopElection(address, user.userId);
   }
 
+  @Patch(':address/name')
+  async editElectionName(
+    @Param('address') address: string,
+    @Body()
+    body: { newName: string },
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.editElectionName(address, body.newName, userId);
+  }
+
   @Post('join-with-invite')
   async joinWithInvite(
     @Body('code') code: string,

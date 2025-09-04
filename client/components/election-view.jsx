@@ -3,7 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useElectionData } from "@/lib/hooks/useElectionData";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check } from "lucide-react";;
+
 import {
   VoteButton,
   JoinElectionButton,
@@ -13,6 +14,7 @@ import {
   EditCandidateButton,
   AddCandidateButton,
   DeleteCandidateButton,
+  EditElectionNameButton
 } from "@/components/buttons";
 
 const ElectionType = {
@@ -191,19 +193,27 @@ export default function ElectionView({ address }) {
               {/* Election Title */}
               <div className="mb-8">
                 <div className="flex flex-row items-center justify-between md:pr-0">
-                  <div className="flex flex-row items-center">
+                  <div className="flex items-center">
                     <h1 className="text-3xl md:text-4xl font-bold mb-2">
                       {election.name}
                     </h1>
-                    <span
-                      className={`ml-5 p-2 inline-block h-3 w-3 rounded-full
-                      ${
-                        election?.isActive
-                          ? "bg-green-500 animate-pulse shadow-[0_0_12px_4px_rgba(34,197,94,0.7)]"
-                          : "bg-red-500 shadow-[0_0_12px_4px_rgba(239,68,68,0.7)]"
-                      }`}
-                    ></span>
+                    {(!election.isActive && election.endTime == 0 && election.isCreator) && (
+                      <EditElectionNameButton
+                        electionAddress={election.contractAddress}
+                        currentName={election.name}
+                        disabled={false}
+                      />
+                    )}
+                                      <span
+                    className={`ml-5 p-2 inline-block h-3 w-3 rounded-full
+                    ${
+                      election?.isActive
+                        ? "bg-green-500 animate-pulse shadow-[0_0_12px_4px_rgba(34,197,94,0.7)]"
+                        : "bg-red-500 shadow-[0_0_12px_4px_rgba(239,68,68,0.7)]"
+                    }`}
+                  ></span>
                   </div>
+
                   <JoinElectionButton
                     electionAddress={election?.contractAddress}
                     electionType={election?.electionType}
