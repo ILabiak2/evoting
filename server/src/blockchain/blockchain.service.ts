@@ -323,7 +323,9 @@ export class BlockchainService {
     const logs = receipt.logs.filter((log) => log.topics[0] === topic0Single);
 
     if (!logs.length) {
-      const endedLogs = receipt.logs.filter((log) => log.topics[0] === topic0Ended);
+      const endedLogs = receipt.logs.filter(
+        (log) => log.topics[0] === topic0Ended,
+      );
       if (endedLogs.length) {
         const endedLog = endedLogs[0];
         const endedElectionId = Number(ethers.getBigInt(endedLog.topics[1]));
@@ -701,7 +703,7 @@ export class BlockchainService {
 
     if (!startTime)
       throw new Error('You need to start election first to set end date');
-    if (newEndTime < Date.now() / 1000)
+    if (newEndTime != 0 && newEndTime < Date.now() / 1000)
       throw new Error('End date should not be in past time');
     if (!isActive && endTime) throw new Error('Election has already ended');
     if (endTime == newEndTime)

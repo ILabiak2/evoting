@@ -4,7 +4,9 @@ export const useEditEndTime = () => {
   return useMutation({
     mutationFn: async ({ address, newEndTime }) => {
       if (!address) throw new Error("Missing election address");
-      if (!newEndTime) throw new Error("End time cannot be empty");
+      if (newEndTime === undefined || newEndTime === null) {
+        throw new Error("End time cannot be empty");
+      }
 
       const res = await fetch(`/api/server/election/${address}/end-time`, {
         method: "PATCH",

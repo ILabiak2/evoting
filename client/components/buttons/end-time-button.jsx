@@ -125,16 +125,36 @@ export const SetEndDateButton = ({ electionAddress, endTime }) => {
 
   const busy = !!txHash && !confirmed;
 
+  const handleClear = async () => {
+    setErrorMessage("");
+    setTxHash(null);
+    try {
+      const data = await editEndTime.mutateAsync({
+        address: electionAddress,
+        newEndTime: 0,
+      });
+      if (data?.txHash) {
+        setTxHash(data.txHash);
+      } else {
+        setErrorMessage("Unexpected server response.");
+      }
+    } catch (err) {
+      setErrorMessage(err?.message || "Failed to clear end date.");
+    }
+  };
+
   return (
     <>
-      <button
-        onClick={handleOpen}
-        disabled={busy || editEndTime.isPending}
-        title="Schedule end date"
-        className={`flex-1 md:inline transform max-md:text-xs mr-2 rounded-lg border-1 bg-white px-6 py-3 md:py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-52 md:max-w-80 dark:bg-black dark:border-border dark:text-white dark:hover:bg-gray-800 ${busy || editEndTime.isPending ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:-translate-y-0.5"}`}
-      >
-        Set end date
-      </button>
+      <div className="flex flex-row gap-2">
+        <button
+          onClick={handleOpen}
+          disabled={busy || editEndTime.isPending}
+          title="Schedule end date"
+          className={`flex-1 md:inline transform max-md:text-xs rounded-lg border-1 bg-white px-6 py-3 md:py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-200 md:w-52 md:max-w-80 dark:bg-black dark:border-border dark:text-white dark:hover:bg-gray-800 ${busy || editEndTime.isPending ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:-translate-y-0.5"}`}
+        >
+          Set end date
+        </button>
+      </div>
 
       {open && (
         <div
@@ -423,6 +443,16 @@ export const SetEndDateButton = ({ electionAddress, endTime }) => {
                   </p>
 
                   <div className="flex justify-end gap-2 pt-2">
+                    {endTime !== 0 && (
+                      <button
+                        onClick={handleClear}
+                        disabled={busy || editEndTime.isPending}
+                        title="Clear end date"
+                        className={`inline-flex items-center rounded-lg border-1 px-4 py-2 font-medium transition-all duration-300 ${busy || editEndTime.isPending ? 'cursor-not-allowed opacity-50 bg-red-500 text-white dark:bg-red-700' : 'cursor-pointer bg-red-600 text-white hover:-translate-y-0.5 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'}`}
+                      >
+                        Clear end date
+                      </button>
+                    )}
                     <button
                       onClick={() => setOpen(false)}
                       className="inline-flex items-center cursor-pointer rounded-lg border-1 bg-neutral-100 px-4 py-2 text-black hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
