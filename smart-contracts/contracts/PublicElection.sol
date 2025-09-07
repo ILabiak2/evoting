@@ -58,9 +58,11 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         if (endTime > 0 && block.timestamp > endTime) {
             isActive = false;
             ended = true;
-            revert("Election has ended");
+            // revert("Election has ended");
+            emit ElectionEnded((electionId));
+            return;
         }
-        require(isActive && !ended, "Election not active");
+        require(isActive && !ended, "Election is not active");
         require(!hasVoted[_voter], "Already voted");
         require(_candidateId < candidates.length, "Invalid candidate");
 

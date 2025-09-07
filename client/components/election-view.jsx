@@ -3,7 +3,9 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useElectionData } from "@/lib/hooks/useElectionData";
-import { Copy, Check } from "lucide-react";;
+import { Copy, Check, X, Calendar, Clock } from "lucide-react";
+
+import { useTxStatus } from "@/lib/hooks/useTxStatus";
 
 import {
   VoteButton,
@@ -14,7 +16,8 @@ import {
   EditCandidateButton,
   AddCandidateButton,
   DeleteCandidateButton,
-  EditElectionNameButton
+  EditElectionNameButton,
+  SetEndDateButton,
 } from "@/components/buttons";
 
 const ElectionType = {
@@ -197,21 +200,23 @@ export default function ElectionView({ address }) {
                     <h1 className="text-3xl md:text-4xl font-bold mb-2">
                       {election.name}
                     </h1>
-                    {(!election.isActive && election.endTime == 0 && election.isCreator) && (
-                      <EditElectionNameButton
-                        electionAddress={election.contractAddress}
-                        currentName={election.name}
-                        disabled={false}
-                      />
-                    )}
-                                      <span
-                    className={`ml-5 p-2 inline-block h-3 w-3 rounded-full
+                    {!election.isActive &&
+                      election.endTime == 0 &&
+                      election.isCreator && (
+                        <EditElectionNameButton
+                          electionAddress={election.contractAddress}
+                          currentName={election.name}
+                          disabled={false}
+                        />
+                      )}
+                    <span
+                      className={`ml-5 p-2 inline-block h-3 w-3 rounded-full
                     ${
                       election?.isActive
                         ? "bg-green-500 animate-pulse shadow-[0_0_12px_4px_rgba(34,197,94,0.7)]"
                         : "bg-red-500 shadow-[0_0_12px_4px_rgba(239,68,68,0.7)]"
                     }`}
-                  ></span>
+                    ></span>
                   </div>
 
                   <JoinElectionButton
@@ -247,6 +252,17 @@ export default function ElectionView({ address }) {
                       election.electionType}
                   </span>
                 </div>
+                {election.endTime > 0 && (() => {
+                  const ended = (Number(election.endTime) * 1000) <= Date.now() || (!election.isActive && Number(election.endTime) > 0);
+                  const label = ended ? 'Ended at:' : 'Ends at:';
+                  const when = new Date(Number(election.endTime) * 1000).toLocaleString('en-GB');
+                  return (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`text-sm ${ended ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{label}</span>
+                      <span className={`text-sm font-medium ${ended ? 'text-red-700 dark:text-red-300' : ''}`}>{when}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Candidates Section */}
@@ -402,19 +418,27 @@ export default function ElectionView({ address }) {
                 )}
               </div>
 
-              {/* Action Buttons */}
-              {election?.isCreator && election.endTime <= 0 && (
+              {election?.isCreator && (
                 <div className="flex flex-col md:flex-row gap-4">
                   {election?.isActive ? (
-                    <StopButton electionAddress={election.contractAddress} />
+                    <>
+                      <StopButton electionAddress={election.contractAddress} />
+                      <SetEndDateButton
+                        electionAddress={election.contractAddress}
+                        endTime={election.endTime}
+                      />
+                    </>
                   ) : (
-                    <StartButton electionAddress={election.contractAddress} />
+                    election?.endTime <= 0 && (
+                      <StartButton electionAddress={election.contractAddress} />
+                    )
                   )}
-                  {election.electionType.includes("private") && (
-                    <InviteCodesGenerator
-                      electionAddress={election.contractAddress}
-                    />
-                  )}
+                  {election.electionType.includes("private") &&
+                    (election?.endTime <= 0 || election?.isActive) && (
+                      <InviteCodesGenerator
+                        electionAddress={election.contractAddress}
+                      />
+                    )}
                 </div>
               )}
             </div>

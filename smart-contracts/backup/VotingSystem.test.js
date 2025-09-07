@@ -369,7 +369,7 @@ describe("VotingSystem", function () {
     it("Не дозволяє голосувати неактивні вибори", async function () {
       await voting.createElection("Інше", false, 0, ["Канд."]);
       await expect(voting.connect(user1).vote(1, 0)).to.be.revertedWith(
-        "Election not active"
+        "Election is not active"
       );
     });
 

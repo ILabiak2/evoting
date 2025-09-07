@@ -7,3 +7,4 @@ export { EditCandidateButton } from "./edit-candidate-button";
 export { AddCandidateButton } from "./add-candidate-button";
 export { DeleteCandidateButton } from "./delete-candidate-button";
 export { EditElectionNameButton } from "./edit-election-button";
+export { SetEndDateButton } from './end-time-button'

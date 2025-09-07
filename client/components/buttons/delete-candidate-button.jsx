@@ -56,7 +56,7 @@ export const DeleteCandidateButton = ({
             }
           `}
       >
-        <Trash2 className="h-6 w-6 scale-150" />
+        <Trash2 className=" h-4 w-4 md:h-6 md:w-6 md:scale-150" />
       </button>
 
       {open && (

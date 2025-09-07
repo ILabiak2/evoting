@@ -24,6 +24,7 @@ export const VoteButton = ({
   } = useVoteStatus(txHash, electionAddress);
 
   const confirmed = Boolean(statusData?.confirmed);
+  const ended = Boolean(statusData?.ended);
 
   const handleOpenConfirm = () => {
     if (disabled) return;
@@ -78,7 +79,9 @@ export const VoteButton = ({
             ? "You can't vote in this election"
             : (txHash && !confirmed) || confirming
               ? "Waiting for confirmation…"
-              : "Vote for this candidate"
+              : ended
+                ? "Election has ended"
+                : "Vote for this candidate"
         }
       >
         {confirming || voteMutation.isPending
@@ -107,7 +110,7 @@ export const VoteButton = ({
                     ? statusError
                       ? "Could not verify"
                       : confirmed
-                        ? "Vote confirmed"
+                        ? (ended ? "Election ended" : "Vote confirmed")
                         : "Submitting your vote…"
                     : "Confirm your vote"}
               </h3>
@@ -197,18 +200,44 @@ export const VoteButton = ({
                   </div>
                 ) : (
                   // Confirmed
-                  <div className="text-sm space-y-1">
-                    <div className="inline-flex items-center gap-2 text-green-600 font-medium">
-                      <Check className="h-5 w-5" />
-                      Vote confirmed on-chain.
-                    </div>
-                    {typeof statusData?.candidateId === "number" && (
-                      <div>Candidate ID: {statusData.candidateId}</div>
-                    )}
-                    {Array.isArray(statusData?.candidateIds) && (
-                      <div>
-                        Candidate IDs: {statusData.candidateIds.join(", ")}
-                      </div>
+                  <div className="text-sm space-y-2">
+                    {ended ? (
+                      <>
+                        <div className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 font-medium">
+                          <X className="h-5 w-5" />
+                          Election ended before your vote could be recorded.
+                        </div>
+                        <p className="text-neutral-700 dark:text-neutral-300">
+                          The transaction was confirmed, but no <code>VoteCast</code> event was emitted. The election likely hit its end time and finalized in this transaction.
+                        </p>
+                        {txHash && (
+                          <div>
+                            <a
+                              className="underline"
+                              href={`https://sepolia.arbiscan.io/tx/${txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              View transaction on explorer
+                            </a>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="inline-flex items-center gap-2 text-green-600 font-medium">
+                          <Check className="h-5 w-5" />
+                          Vote confirmed on-chain.
+                        </div>
+                        {typeof statusData?.candidateId === "number" && (
+                          <div>Candidate ID: {statusData.candidateId}</div>
+                        )}
+                        {Array.isArray(statusData?.candidateIds) && (
+                          <div>
+                            Candidate IDs: {statusData.candidateIds.join(", ")}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

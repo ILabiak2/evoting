@@ -467,6 +467,27 @@ export class ElectionService {
     }
   }
 
+  async editElectionEndTime(
+    electionAddress: string,
+    newEndTime: number,
+    userId: string,
+  ) {
+    if (!userId) throw new UnauthorizedException('Missing user');
+
+    try {
+      const { txHash } = await this.blockchain.editElectionEndTime(
+        electionAddress,
+        userId,
+        newEndTime,
+      );
+      return { txHash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
+    }
+  }
+
   async editCandidate(
     electionAddress: string,
     candidateId: number,

@@ -129,6 +129,20 @@ export class ElectionController {
     return this.electionService.editElectionName(address, body.newName, userId);
   }
 
+  @Patch(':address/end-time')
+  async editElectionEndTime(
+    @Param('address') address: string,
+    @Body()
+    body: { newEndTime: number },
+    @User('userId') userId: string,
+  ) {
+    return this.electionService.editElectionEndTime(
+      address,
+      body.newEndTime,
+      userId,
+    );
+  }
+
   @Post('join-with-invite')
   async joinWithInvite(
     @Body('code') code: string,

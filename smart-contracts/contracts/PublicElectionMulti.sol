@@ -70,9 +70,11 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
         if (endTime > 0 && block.timestamp > endTime) {
             isActive = false;
             ended = true;
-            revert("Election has ended");
+            // revert("Election has ended");
+            emit ElectionEnded((electionId));
+            return;
         }
-        require(isActive && !ended, "Election not active");
+        require(isActive && !ended, "Election is not active");
         require(!hasVoted[_voter], "Already voted");
         uint256 n = _candidateIds.length;
         require(n > 0, "No candidates selected");

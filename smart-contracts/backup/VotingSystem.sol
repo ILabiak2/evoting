@@ -338,7 +338,7 @@ contract VotingSystem is EIP712 {
     ) internal {
         Election storage e = elections[_electionId];
 
-        require(e.isActive && !e.endedManually, "Election not active");
+        require(e.isActive && !e.endedManually, "Election is not active");
         require(!e.hasVoted[_voter], "Already voted");
         require(_candidateId < e.candidateCount, "Invalid candidate");
 

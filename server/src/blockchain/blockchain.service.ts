@@ -260,10 +260,11 @@ export class BlockchainService {
           description = `Election name was changed from ${event.args.oldName} to ${event.args.newName}`;
           break;
         case 'EndTimeUpdated':
-          if (event.args?.newEndTime == 0) {
+          const newEndSec = Number(event.args?.newEndTime ?? 0);
+          if (newEndSec == 0) {
             description = `Election ${name} end time was removed. Creator will be able to end it manually`;
           } else {
-            const date = new Date(event.args.newEndTime * 1000);
+            const date = new Date(newEndSec * 1000);
             description = `Election ${name} end time was set to  ${date.toLocaleString('en-GB', { timeZone: 'UTC' })}`;
           }
           break;
@@ -307,11 +308,12 @@ export class BlockchainService {
     candidateId?: number;
     candidateIds?: number[];
     voter?: string;
+    ended?: boolean;
   }> {
     const voteCastSig1 = 'VoteCast(uint256,uint256,address)';
-    // const voteCastSig2 = "VoteCast(uint256,uint256[],address)";
     const topic0Single = ethers.id(voteCastSig1);
-    // const topic0Multi  = ethers.id(voteCastSig2);
+    const electionEndedSig = 'ElectionEnded(uint256)';
+    const topic0Ended = ethers.id(electionEndedSig);
 
     const receipt = await this.getConfirmedReceipt(txHash);
     if (!receipt) {
@@ -319,7 +321,16 @@ export class BlockchainService {
     }
 
     const logs = receipt.logs.filter((log) => log.topics[0] === topic0Single);
-    if (!logs.length) return { confirmed: false };
+
+    if (!logs.length) {
+      const endedLogs = receipt.logs.filter((log) => log.topics[0] === topic0Ended);
+      if (endedLogs.length) {
+        const endedLog = endedLogs[0];
+        const endedElectionId = Number(ethers.getBigInt(endedLog.topics[1]));
+        return { confirmed: true, electionId: endedElectionId, ended: true };
+      }
+      return { confirmed: false };
+    }
 
     const log = logs[0];
     const abiCoder = new ethers.AbiCoder();
@@ -669,6 +680,48 @@ export class BlockchainService {
 
     try {
       const tx = await electionContract.editElectionName(newName);
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      console.error(err);
+      throw new Error(msg);
+    }
+  }
+
+  async editElectionEndTime(
+    address: string,
+    userId: string,
+    newEndTime: number,
+  ) {
+    const creatorWallet = await this.getUserWallet(userId);
+
+    const { name, electionType, isActive, startTime, endTime, creator } =
+      await this.getElectionData(address, userId);
+
+    if (!startTime)
+      throw new Error('You need to start election first to set end date');
+    if (newEndTime < Date.now() / 1000)
+      throw new Error('End date should not be in past time');
+    if (!isActive && endTime) throw new Error('Election has already ended');
+    if (endTime == newEndTime)
+      throw new Error('Election already has this end date');
+    if (creator != creatorWallet.address)
+      throw new ForbiddenException('Only creator can start the election');
+
+    const cfg = VOTE_REGISTRY[electionType as any];
+    if (!cfg) {
+      throw new Error(`Unsupported election type: ${electionType}`);
+    }
+
+    const electionContract = new ethers.Contract(
+      address,
+      cfg.abi as any,
+      this.adminWallet,
+    );
+
+    try {
+      const tx = await electionContract.setEndTime(newEndTime);
       return { txHash: tx.hash };
     } catch (err: any) {
       const msg =
