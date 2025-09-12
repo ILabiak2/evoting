@@ -1,11 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useElectionData } from "@/lib/hooks/useElectionData";
-import { Copy, Check, X, Calendar, Clock } from "lucide-react";
-
-import { useTxStatus } from "@/lib/hooks/useTxStatus";
+import { Copy, Check } from "lucide-react";
+import { ElectionResults } from "./election-results";
 
 import {
   VoteButton,
@@ -32,69 +31,42 @@ export default function ElectionView({ address }) {
   const { user } = useAuth();
   const { data: election, isLoading, error } = useElectionData(address);
   // const election = {
-  //   id: 0,
-  //   name: "Election for Student Body President",
-  //   startTime: 1754477820,
-  //   endTime: 0,
+  //   id: 2,
+  //   name: "Manager election",
+  //   createdAt: 1757248125,
+  //   startTime: 1757248125,
+  //   endTime: 1757687152,
   //   creator: "0x076bC5E783c557287A88a1Ee427b0fbf3E17c5bF",
   //   isActive: false,
-  //   startedManually: false,
-  //   endedManually: false,
-  //   candidateCount: 3,
+  //   started: true,
+  //   ended: true,
+  //   candidateCount: 2,
   //   voterLimit: 0,
   //   electionType: "public_single_choice",
-  //   contractAddress: "0xAEe41ce7bd26596E31236ff34260B163fBb29D9D",
+  //   contractAddress: "0x2F78f1525C2356847713D7DF0E547263CD56f835",
   //   candidates: [
   //     {
   //       id: 0,
-  //       name: "Sarah Chen",
-  //       votes: 120,
+  //       name: "Alice Johnson",
+  //       votes: 331,
   //     },
   //     {
   //       id: 1,
-  //       name: "David Lee",
-  //       votes: 110,
+  //       name: "Bob Smith",
+  //       votes: 820,
   //     },
   //     {
   //       id: 2,
-  //       name: "Maria RodriguezRodriguezRodriguez",
-  //       votes: 95,
-  //     },
-  //     {
-  //       id: 3,
-  //       name: "Sarah Chen",
-  //       votes: 120,
-  //     },
-  //     {
-  //       id: 4,
-  //       name: "David Lee",
-  //       votes: 110,
-  //     },
-  //     {
-  //       id: 5,
-  //       name: "Maria RodriguezRodriguezRodriguez",
-  //       votes: 95,
-  //     },
-  //     {
-  //       id: 6,
-  //       name: "Sarah Chen",
-  //       votes: 120,
-  //     },
-  //     {
-  //       id: 7,
-  //       name: "David Lee",
-  //       votes: 110,
-  //     },
-  //     {
-  //       id: 8,
-  //       name: "Maria RodriguezRodriguezRodriguez",
-  //       votes: 95,
+  //       name: "Den Krason",
+  //       votes: 430,
   //     },
   //   ],
-  //   totalVotes: 325,
-  //   isCreator: true,
+  //   totalVotes: 1581,
+  //   maxChoicesPerVoter: 1,
   //   hasVoted: false,
-  //   votedCandidateIds: [1, 4],
+  //   isCreator: true,
+  //   votedCandidateIds: [],
+  //   isParticipant: false,
   // };
   // const isLoading = false;
   // const error = false;
@@ -252,171 +224,202 @@ export default function ElectionView({ address }) {
                       election.electionType}
                   </span>
                 </div>
-                {election.endTime > 0 && (() => {
-                  const ended = (Number(election.endTime) * 1000) <= Date.now() || (!election.isActive && Number(election.endTime) > 0);
-                  const label = ended ? 'Ended at:' : 'Ends at:';
-                  const when = new Date(Number(election.endTime) * 1000).toLocaleString('en-GB');
-                  return (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className={`text-sm ${ended ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{label}</span>
-                      <span className={`text-sm font-medium ${ended ? 'text-red-700 dark:text-red-300' : ''}`}>{when}</span>
-                    </div>
-                  );
-                })()}
+                {election.endTime > 0 &&
+                  (() => {
+                    const ended =
+                      Number(election.endTime) * 1000 <= Date.now() ||
+                      (!election.isActive && Number(election.endTime) > 0);
+                    const label = ended ? "Ended at:" : "Ends at:";
+                    const when = new Date(
+                      Number(election.endTime) * 1000
+                    ).toLocaleString("en-GB");
+                    return (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span
+                          className={`text-sm ${ended ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
+                        >
+                          {label}
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${ended ? "text-red-700 dark:text-red-300" : ""}`}
+                        >
+                          {when}
+                        </span>
+                      </div>
+                    );
+                  })()}
               </div>
-
-              {/* Candidates Section */}
-              <div className="mb-8">
-                <div className="flex flex-row justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold  align-middle">
-                    Candidates
-                  </h2>
-                  {election?.isCreator &&
-                    !election.isActive &&
-                    election.endTime == 0 && (
-                      <AddCandidateButton
-                        electionAddress={election.contractAddress}
-                      />
-                    )}
-                </div>
-
-                <div className="border border-neutral-200 rounded-lg overflow-hidden dark:border-neutral-700">
-                  <div className="bg-sidebar-primary px-6 py-3 border-b border-neutral-200 dark:border-neutral-700 sticky top-0 z-10">
-                    <div className="grid grid-cols-3 gap-4 items-center">
-                      <span className="font-medium">Candidate</span>
-                      <span className="font-medium">Votes</span>
-                      {election?.hasVoted ? (
-                        <span className="font-medium text-right md:mr-10">
-                          Your vote
-                        </span>
-                      ) : isMulti && !election?.isCreator ? (
-                        <span className="font-medium text-right md:mr-10">
-                          Select
-                        </span>
-                      ) : (
-                        <span className="font-medium text-right mr-8 md:mr-10">
-                          Action
-                        </span>
-                      )}
+              {election.ended ? (
+                <ElectionResults election={election} />
+              ) : (
+                <>
+                  {/* Candidates Section */}
+                  <div className="mb-8">
+                    <div className="flex flex-row justify-between items-center mb-4">
+                      <h2 className="text-xl font-bold  align-middle">
+                        Candidates
+                      </h2>
+                      {election?.isCreator &&
+                        !election.isActive &&
+                        election.endTime == 0 && (
+                          <AddCandidateButton
+                            electionAddress={election.contractAddress}
+                          />
+                        )}
                     </div>
-                  </div>
-                  <div className="divide-y divide-neutral-200 dark:divide-neutral-700 items-center max-h-[30vh] md:max-h-[40vh] overflow-y-auto">
-                    {election.candidates.map((candidate) => (
-                      <div
-                        key={candidate.id}
-                        className="px-6 py-4 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="flex items-center w-full">
-                            <span className="font-medium break-words hyphens-auto w-full">
-                              {candidate.name}
+
+                    <div className="border border-neutral-200 rounded-lg overflow-hidden dark:border-neutral-700">
+                      <div className="bg-sidebar-primary px-6 py-3 border-b border-neutral-200 dark:border-neutral-700 sticky top-0 z-10">
+                        <div className="grid grid-cols-3 gap-4 items-center">
+                          <span className="font-medium">Candidate</span>
+                          <span className="font-medium">Votes</span>
+                          {election?.hasVoted ? (
+                            <span className="font-medium text-right md:mr-10">
+                              Your vote
                             </span>
-                          </div>
-                          <div className="flex items-center">
-                            <span className="font-medium">
-                              {candidate.votes}
+                          ) : isMulti && !election?.isCreator ? (
+                            <span className="font-medium text-right md:mr-10">
+                              Select
                             </span>
-                          </div>
-                          {election?.isCreator ? (
-                            <div className="flex flex-row justify-end">
-                              <EditCandidateButton
-                                disabled={
-                                  election.isActive || election.endTime > 0
-                                }
-                                candidateId={candidate.id}
-                                electionAddress={election.contractAddress}
-                                currentName={candidate.name}
-                              />
-                              {!election.isActive && election.endTime <= 0 && (
-                                <div className="ml-2">
-                                  <DeleteCandidateButton
-                                    candidateId={candidate.id}
-                                    electionAddress={election.contractAddress}
-                                    candidateName={candidate.name}
-                                  />
-                                </div>
-                              )}
-                            </div>
                           ) : (
-                            <>
-                              {election?.hasVoted ? (
-                                <div className="flex items-center justify-end text-right md:mr-10">
-                                  {Array.isArray(election.votedCandidateIds) &&
-                                  election.votedCandidateIds.includes(
-                                    candidate.id
-                                  ) ? (
-                                    <span className="inline-flex items-center text-green-500 font-medium">
-                                      <Check className="h-5 w-5 mr-1" />
-                                      Voted
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground">
-                                      —
-                                    </span>
-                                  )}
-                                </div>
-                              ) : isMulti ? (
-                                <div className="flex items-center justify-end text-right mr-2 md:mr-12">
-                                  <input
-                                    type="checkbox"
-                                    className="h-6 w-6 cursor-pointer"
-                                    checked={selectedIds.includes(candidate.id)}
-                                    onChange={() => toggleSelect(candidate.id)}
-                                    disabled={
-                                      (!selectedIds.includes(candidate.id) &&
-                                        atMax) ||
-                                      !election?.isActive ||
-                                      (String(election?.electionType).includes(
-                                        "private"
-                                      ) &&
-                                        !election.isParticipant)
-                                    }
-                                    title={
-                                      !selectedIds.includes(candidate.id) &&
-                                      atMax
-                                        ? `You can choose up to ${maxChoices}`
-                                        : "Select candidate"
-                                    }
-                                  />
-                                </div>
-                              ) : (
-                                <VoteButton
-                                  candidateId={candidate.id}
-                                  candidates={election.candidates}
-                                  electionAddress={election.contractAddress}
-                                  disabled={
-                                    (String(election?.electionType).includes(
-                                      "private"
-                                    ) &&
-                                      !election.isParticipant) ||
-                                    !election?.isActive
-                                  }
-                                />
-                              )}
-                            </>
+                            <span className="font-medium text-right mr-8 md:mr-10">
+                              Action
+                            </span>
                           )}
                         </div>
                       </div>
-                    ))}
+                      <div className="divide-y divide-neutral-200 dark:divide-neutral-700 items-center max-h-[30vh] md:max-h-[40vh] overflow-y-auto">
+                        {election.candidates.map((candidate) => (
+                          <div
+                            key={candidate.id}
+                            className="px-6 py-4 hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="flex items-center w-full">
+                                <span className="font-medium break-words hyphens-auto w-full">
+                                  {candidate.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="font-medium">
+                                  {candidate.votes}
+                                </span>
+                              </div>
+                              {election?.isCreator ? (
+                                <div className="flex flex-row justify-end">
+                                  <EditCandidateButton
+                                    disabled={
+                                      election.isActive || election.endTime > 0
+                                    }
+                                    candidateId={candidate.id}
+                                    electionAddress={election.contractAddress}
+                                    currentName={candidate.name}
+                                  />
+                                  {!election.isActive &&
+                                    election.endTime <= 0 && (
+                                      <div className="ml-2">
+                                        <DeleteCandidateButton
+                                          candidateId={candidate.id}
+                                          electionAddress={
+                                            election.contractAddress
+                                          }
+                                          candidateName={candidate.name}
+                                        />
+                                      </div>
+                                    )}
+                                </div>
+                              ) : (
+                                <>
+                                  {election?.hasVoted ? (
+                                    <div className="flex items-center justify-end text-right md:mr-10">
+                                      {Array.isArray(
+                                        election.votedCandidateIds
+                                      ) &&
+                                      election.votedCandidateIds.includes(
+                                        candidate.id
+                                      ) ? (
+                                        <span className="inline-flex items-center text-green-500 font-medium">
+                                          <Check className="h-5 w-5 mr-1" />
+                                          Voted
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">
+                                          —
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : isMulti ? (
+                                    <div className="flex items-center justify-end text-right mr-2 md:mr-12">
+                                      <input
+                                        type="checkbox"
+                                        className="h-6 w-6 cursor-pointer"
+                                        checked={selectedIds.includes(
+                                          candidate.id
+                                        )}
+                                        onChange={() =>
+                                          toggleSelect(candidate.id)
+                                        }
+                                        disabled={
+                                          (!selectedIds.includes(
+                                            candidate.id
+                                          ) &&
+                                            atMax) ||
+                                          !election?.isActive ||
+                                          (String(
+                                            election?.electionType
+                                          ).includes("private") &&
+                                            !election.isParticipant)
+                                        }
+                                        title={
+                                          !selectedIds.includes(candidate.id) &&
+                                          atMax
+                                            ? `You can choose up to ${maxChoices}`
+                                            : "Select candidate"
+                                        }
+                                      />
+                                    </div>
+                                  ) : (
+                                    <VoteButton
+                                      candidateId={candidate.id}
+                                      candidates={election.candidates}
+                                      electionAddress={election.contractAddress}
+                                      disabled={
+                                        (String(
+                                          election?.electionType
+                                        ).includes("private") &&
+                                          !election.isParticipant) ||
+                                        !election?.isActive
+                                      }
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {isMulti && !election?.isCreator && !election?.hasVoted && (
+                      <div className="mt-4 w-full flex justify-end">
+                        <VoteButton
+                          candidateIds={selectedIds}
+                          candidates={election.candidates}
+                          maxChoices={maxChoices}
+                          electionAddress={election.contractAddress}
+                          disabled={
+                            (String(election?.electionType).includes(
+                              "private"
+                            ) &&
+                              !election.isParticipant) ||
+                            !election?.isActive ||
+                            selectedIds.length === 0
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-                {isMulti && !election?.isCreator && !election?.hasVoted && (
-                  <div className="mt-4 w-full flex justify-end">
-                    <VoteButton
-                      candidateIds={selectedIds}
-                      candidates={election.candidates}
-                      maxChoices={maxChoices}
-                      electionAddress={election.contractAddress}
-                      disabled={
-                        (String(election?.electionType).includes("private") &&
-                          !election.isParticipant) ||
-                        !election?.isActive ||
-                        selectedIds.length === 0
-                      }
-                    />
-                  </div>
-                )}
-              </div>
+                </>
+              )}
 
               {election?.isCreator && (
                 <div className="flex flex-col md:flex-row gap-4">
