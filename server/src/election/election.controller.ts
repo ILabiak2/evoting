@@ -67,6 +67,11 @@ export class ElectionController {
     }
   }
 
+  @Get('actions')
+  findUserActions(@User('userId') userId: string) {
+    return this.electionService.getUserActions(userId)
+  }
+
   @Get(':address')
   findOne(@Param('address') address: string, @User('userId') userId: string) {
     return this.electionService.getElectionData(address, userId);

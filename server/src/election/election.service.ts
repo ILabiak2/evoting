@@ -91,6 +91,55 @@ export class ElectionService {
     }
   }
 
+  groupEvents(events: any[]) {
+    const grouped: Record<string, any> = {};
+
+    for (const event of events) {
+      const key = `${event.election_id}_${event.time}`;
+
+      if (!grouped[key]) {
+        grouped[key] = {
+          ...event,
+          descriptions: [event.description],
+        };
+        delete grouped[key].description;
+      } else {
+        grouped[key].descriptions.push(event.description);
+      }
+    }
+
+    return Object.values(grouped);
+  }
+
+  async getUserActions(userId: string) {
+    try {
+      const actions = await this.prisma.events.findMany({
+        where: {
+          factory_address: process.env.CONTRACT_ADDRESS,
+          user_id: userId,
+        },
+        include: {
+          election_meta: {
+            select: {
+              id: true,
+              election_address: true,
+              name: true,
+              election_type: true,
+            },
+          },
+        },
+        orderBy: { time: 'desc' },
+      });
+
+      return this.groupEvents(actions);
+    } catch (err) {
+      this.logger.error(err);
+      const msg =
+        err?.shortMessage || err?.reason || err?.message || String(err);
+      throw new BadRequestException(msg);
+    }
+  }
+
   async checkElectionStatus(txHash: string, userId: string) {
     const status = await this.blockchain.checkElectionCreated(txHash);
 
