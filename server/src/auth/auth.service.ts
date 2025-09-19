@@ -2,15 +2,21 @@ import {
   Injectable,
   UnauthorizedException,
   InternalServerErrorException,
+  BadRequestException,
+  ForbiddenException,
+  HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto, LoginUserDto } from './dto/user.dto';
+import {
+  CreateUserDto,
+  LoginUserDto,
+  ChangeUserPasswordDto,
+} from './dto/user.dto';
 import { UUID } from 'crypto';
 import { Wallet } from 'ethers';
-// import { SecretClient } from '@azure/keyvault-secrets';
-// import { ClientSecretCredential } from '@azure/identity';
 import { AzureKeyVaultService } from '@/services/azure-key-vault.service';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,6 +28,13 @@ export class AuthService {
     private readonly azureKeyVaultService: AzureKeyVaultService,
   ) {}
 
+  private static passwordChangeAttempts: Map<
+    string,
+    { count: number; firstAttemptTs: number }
+  > = new Map();
+  private static readonly PASSWORD_CHANGE_MAX_ATTEMPTS = 5;
+  private static readonly PASSWORD_CHANGE_WINDOW_MS = 15 * 60 * 1000;
+
   async getUserData(userId: UUID) {
     const userData = await this.prisma.users.findUnique({
       where: { id: userId },
@@ -31,9 +44,15 @@ export class AuthService {
         name: true,
         role: true,
         avatar_url: true,
+        created_at: true,
         wallets: {
           select: {
             public_address: true,
+          },
+        },
+        auth_providers: {
+          select: {
+            provider: true,
           },
         },
       },
@@ -47,6 +66,8 @@ export class AuthService {
       role: userData.role,
       avatar_url: userData.avatar_url,
       public_address: userData.wallets[0]?.public_address ?? null,
+      provider: userData.auth_providers[0]?.provider ?? null,
+      created_at: userData.created_at,
     };
   }
 
@@ -57,7 +78,26 @@ export class AuthService {
     if (existingUser)
       throw new UnauthorizedException('Email already registered');
 
-    const password_hash = await bcrypt.hash(createUserDto.password, 10);
+    const pwd = createUserDto.password || '';
+    const pwdErrors: string[] = [];
+    if (pwd.length < 8)
+      pwdErrors.push('Password must be at least 8 characters long');
+    if (!/[a-z]/.test(pwd))
+      pwdErrors.push('Password must contain a lowercase letter');
+    if (!/[A-Z]/.test(pwd))
+      pwdErrors.push('Password must contain an uppercase letter');
+    if (!/[0-9]/.test(pwd)) pwdErrors.push('Password must contain a number');
+    if (!/[!@#\$%\^&\*\(\)\-_=+\[\]{};:\"\\|,.<>\/?]/.test(pwd))
+      pwdErrors.push('Password must contain a special character');
+
+    if (pwdErrors.length) {
+      throw new BadRequestException({
+        message: 'Password does not meet strength requirements',
+        details: pwdErrors,
+      });
+    }
+
+    const password_hash = await bcrypt.hash(pwd, 10);
 
     // Create wallet first
     const wallet = Wallet.createRandom();
@@ -66,21 +106,9 @@ export class AuthService {
     const userId = uuidv4();
     const vaultKeyName = `wallet-key-${userId}`;
 
-    // Init Azure Key Vault client
-    // const credential = new ClientSecretCredential(
-    //   process.env.AZURE_TENANT_ID,
-    //   process.env.AZURE_CLIENT_ID,
-    //   process.env.AZURE_CLIENT_SECRET,
-    // );
-    // const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
-    // const vaultClient = new SecretClient(vaultUrl, credential);
-
     try {
-      // Store private key in Key Vault FIRST — before DB write
-      // await vaultClient.setSecret(vaultKeyName, privateKey);
       await this.azureKeyVaultService.setPrivateKey(vaultKeyName, privateKey);
 
-      // Wrap all Prisma operations in a single transaction
       const [user] = await this.prisma.$transaction([
         this.prisma.users.create({
           data: {
@@ -108,10 +136,8 @@ export class AuthService {
 
       return this._generateToken(user);
     } catch (err) {
-      // Optional: delete secret from Key Vault if DB transaction failed
-      console.log(err)
+      console.log(err);
       try {
-        // await vaultClient.beginDeleteSecret(vaultKeyName);
         await this.azureKeyVaultService.deletePrivateKey(vaultKeyName);
       } catch (e) {
         console.error('Failed to cleanup key vault secret:', e.message);
@@ -161,21 +187,9 @@ export class AuthService {
     const userId = uuidv4();
     const vaultKeyName = `wallet-key-${userId}`;
 
-    // Initialize Azure Key Vault client
-    // const credential = new ClientSecretCredential(
-    //   process.env.AZURE_TENANT_ID,
-    //   process.env.AZURE_CLIENT_ID,
-    //   process.env.AZURE_CLIENT_SECRET,
-    // );
-    // const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`;
-    // const vaultClient = new SecretClient(vaultUrl, credential);
-
     try {
-      // Save private key in Azure Key Vault
-      // await vaultClient.setSecret(vaultKeyName, privateKey);
       await this.azureKeyVaultService.setPrivateKey(vaultKeyName, privateKey);
 
-      // Create user + wallet in a single transaction
       const [newUser] = await this.prisma.$transaction([
         this.prisma.users.create({
           data: {
@@ -202,15 +216,101 @@ export class AuthService {
 
       return this._generateToken(newUser);
     } catch (err) {
-      // Rollback: delete the key vault secret if DB failed
+      // Rollback
       try {
-        // await vaultClient.beginDeleteSecret(vaultKeyName);
-        await this.azureKeyVaultService.deletePrivateKey(vaultKeyName)
+        await this.azureKeyVaultService.deletePrivateKey(vaultKeyName);
       } catch (e) {
         console.error('Vault cleanup failed:', e.message);
       }
 
       throw new InternalServerErrorException('Google login failed');
+    }
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangeUserPasswordDto) {
+    const { currentPassword, newPassword } = changePasswordDto;
+    if (!currentPassword || !newPassword) {
+      throw new BadRequestException('Current and new passwords are required');
+    }
+
+    const key = String(userId);
+    const now = Date.now();
+    const entry = AuthService.passwordChangeAttempts.get(key);
+    if (entry) {
+      if (now - entry.firstAttemptTs > AuthService.PASSWORD_CHANGE_WINDOW_MS) {
+        AuthService.passwordChangeAttempts.set(key, {
+          count: 1,
+          firstAttemptTs: now,
+        });
+      } else {
+        if (entry.count >= AuthService.PASSWORD_CHANGE_MAX_ATTEMPTS) {
+          throw new HttpException(
+            'Too many password change attempts. Try again later.',
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        }
+        entry.count++;
+        AuthService.passwordChangeAttempts.set(key, entry);
+      }
+    } else {
+      AuthService.passwordChangeAttempts.set(key, {
+        count: 1,
+        firstAttemptTs: now,
+      });
+    }
+
+    const provider = await this.prisma.auth_providers.findFirst({
+      where: { user_id: userId, provider: 'email' },
+    });
+
+    if (!provider || !provider.password_hash) {
+      throw new ForbiddenException(
+        'Account does not use email/password authentication',
+      );
+    }
+
+    const matches = await bcrypt.compare(
+      currentPassword,
+      provider.password_hash,
+    );
+    if (!matches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const errors: string[] = [];
+    if (newPassword.length < 8)
+      errors.push('Password must be at least 8 characters long');
+    if (!/[a-z]/.test(newPassword))
+      errors.push('Password must contain a lowercase letter');
+    if (!/[A-Z]/.test(newPassword))
+      errors.push('Password must contain an uppercase letter');
+    if (!/[0-9]/.test(newPassword))
+      errors.push('Password must contain a number');
+    if (!/[!@#\$%\^&\*\(\)\-_=+\[\]{};:\"\\|,.<>\/?]/.test(newPassword))
+      errors.push('Password must contain a special character');
+    if (newPassword === currentPassword)
+      errors.push('New password must be different from current password');
+
+    if (errors.length) {
+      throw new BadRequestException({
+        message: 'Password does not meet strength requirements',
+        details: errors,
+      });
+    }
+
+    try {
+      const newHash = await bcrypt.hash(newPassword, 10);
+      await this.prisma.auth_providers.update({
+        where: { id: provider.id },
+        data: { password_hash: newHash },
+      });
+
+      AuthService.passwordChangeAttempts.delete(key);
+
+      return { changed: true };
+    } catch (err) {
+      console.error('Failed to update password', err);
+      throw new InternalServerErrorException('Failed to update password');
     }
   }
 

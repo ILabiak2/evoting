@@ -98,25 +98,4 @@ export const VOTE_REGISTRY: Record<ElectionType, VoteConfig> = {
       authSignature,
     ],
   },
-
-  // Example multi-choice:
-  // [ElectionType.PUBLIC_MULTI_CHOICE]: {
-  //   abi: PublicMultiABI,
-  //   method: 'voteWithSignature',
-  //   structName: 'VoteMultiChoice',
-  //   types: {
-  //     VoteMultiChoice: [
-  //       { name: 'voter',        type: 'address' },
-  //       { name: 'candidateIds', type: 'uint256[]' },
-  //       { name: 'nonce',        type: 'uint256' },
-  //       { name: 'deadline',     type: 'uint256' },
-  //     ],
-  //   },
-  //   buildValue: ({ voter, candidateIds, nonce, deadline }) => ({
-  //     voter,
-  //     candidateIds,
-  //     nonce,
-  //     deadline,
-  //   }),
-  // },
 };
