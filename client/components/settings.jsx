@@ -4,6 +4,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { Copy, Eye, EyeOff } from "lucide-react";
 import { useChangePassword } from "@/lib/hooks/useChangePassword";
+import { MobileMenuButton } from "@/components/ui/mobile-menu-button";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -88,6 +89,10 @@ export default function Settings() {
           <h1 className="text-2xl font-bold mb-2 text-neutral-900 dark:text-neutral-100">
             Profile settings
           </h1>
+          <div className="flex md:hidden">
+            <MobileMenuButton />
+          </div>
+
           <p className="text-sm text-muted-foreground mb-6">
             Manage your profile and account settings
           </p>

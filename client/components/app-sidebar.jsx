@@ -86,8 +86,9 @@ export default function AppSidebar({ children }) {
             />
           </div>
         </SidebarBody>
+        {children}
       </Sidebar>
-      {children}
+
     </div>
   );
 }
