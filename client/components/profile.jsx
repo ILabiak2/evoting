@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUserActions } from "@/lib/hooks/useUserActions";
+import { MobileMenuButton } from "@/components/ui/mobile-menu-button";
 
 function shortAddr(addr = "", len = 6) {
   if (!addr) return "";
@@ -66,11 +67,16 @@ export default function Profile() {
     <div className="flex flex-1 flex-col min-h-0">
       <div className="flex h-full w-full flex-1 flex-col gap-2 border-neutral-200 bg-white p-2 md:p-10 md:pt-0 dark:border-neutral-700 dark:bg-neutral-950">
         <div className="flex items-center justify-between mb-4 md:mt-4">
-          <div>
-            <h1 className="text-2xl font-bold">Profile</h1>
-            <p className="text-sm text-muted-foreground">
-              Recent actions you performed
-            </p>
+          <div className="flex mt-2 md:mt-0 w-full justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Profile</h1>
+              <p className="text-sm text-muted-foreground">
+                Recent actions you performed
+              </p>
+            </div>
+            <div className="flex md:hidden">
+              <MobileMenuButton />
+            </div>
           </div>
         </div>
 

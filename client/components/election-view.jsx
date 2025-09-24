@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useElectionData } from "@/lib/hooks/useElectionData";
 import { Copy, Check } from "lucide-react";
 import { ElectionResults } from "./election-results";
+import { MobileMenuButton } from "@/components/ui/mobile-menu-button";
 
 import {
   VoteButton,
@@ -69,7 +70,7 @@ export default function ElectionView({ address }) {
   //   isParticipant: false,
   // };
   // const isLoading = false;
-  // const error = false;
+  // const error = true;
 
   const handleCopyAddress = (text) => {
     navigator.clipboard.writeText(text);
@@ -122,17 +123,22 @@ export default function ElectionView({ address }) {
             </p>
           </div>
           <div className="h-15 md:h-20 flex justify-end items-center w-full rounded-lg">
-            <button
-              onClick={() => {
+            <a
+              href="/dashboard"
+              onClick={(e) => {
+                e.preventDefault();
                 router.push("/dashboard");
               }}
-              className="w-60 transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+              className="w-60 hidden md:inline text-center transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
             >
               Back to dashboard
-            </button>
+            </a>
+            <div className="flex md:hidden">
+              <MobileMenuButton />
+            </div>
           </div>
         </div>
-        <div className="flex gap-2 flex-1 overflow-y-auto items-start">
+        <div className="flex flex-col gap-2 flex-1 overflow-y-auto items-start">
           {isLoading && (
             <div className="flex flex-col justify-center items-center h-full w-full">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mb-4"></div>
@@ -446,6 +452,16 @@ export default function ElectionView({ address }) {
               )}
             </div>
           )}
+          <a
+            href="/dashboard"
+            onClick={(e) => {
+              e.preventDefault();
+              router.push("/dashboard");
+            }}
+            className="w-full mt-2 inline md:hidden text-center transform rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+          >
+            Back to dashboard
+          </a>
         </div>
       </div>
     </div>

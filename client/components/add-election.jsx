@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
 import { useCreateElection } from "@/lib/hooks/useCreateElection";
 import { useElectionStatus } from "@/lib/hooks/useElectionStatus";
+import { MobileMenuButton } from "@/components/ui/mobile-menu-button";
 import {
   Select,
   SelectContent,
@@ -95,19 +96,19 @@ export default function AddElection() {
   return (
     <div className="grid grid-cols-1 md:gap-4 md:grid-cols-2 overflow-y-auto h-full w-full p-2 md:p-10 bg-white dark:bg-neutral-950">
       <div className="w-full order-1 md:order-1 md:shadow-input md:dark:shadow-neutral-900 border-0 z-20 md:mt-5 md:mx-5 md:max-w-md rounded-2xl p-4 md:p-8">
-        <h2 className="text-3xl font-bold text-neutral-800 dark:text-neutral-200">
-          Create an election
-        </h2>
+        <div className="flex justify-between">
+          <h2 className="text-3xl font-bold text-neutral-800 dark:text-neutral-200">
+            Create an election
+          </h2>
+          <div className="flex md:hidden">
+            <MobileMenuButton />
+          </div>
+        </div>
+
         <p className="mt-2 max-w-sm md:pb-0 text-sm text-neutral-600 dark:text-neutral-300">
           Your public address: 0x.todo.23
         </p>
         <form className="mt-4 md:my-4">
-          {/* {errorMessage && (
-                        <div className="mb-4 text-sm text-red-600 font-medium">
-                            {errorMessage}
-                        </div>
-                    )}
-                    {errors[0] && <p className="text-sm mb-1 text-red-500">{errors[0]}</p>} */}
           <LabelInputContainer className="mb-4">
             <Label htmlFor="type">Election type</Label>
             <Select

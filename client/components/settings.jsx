@@ -86,11 +86,13 @@ export default function Settings() {
     <div className="flex flex-1 flex-col min-h-0">
       <div className="flex h-full w-full flex-1 overflow-auto flex-col gap-2 border-neutral-200 bg-white p-4 md:p-10 dark:border-neutral-700 dark:bg-neutral-950">
         <div className="max-w-3xl w-full mx-auto">
-          <h1 className="text-2xl font-bold mb-2 text-neutral-900 dark:text-neutral-100">
-            Profile settings
-          </h1>
-          <div className="flex md:hidden">
-            <MobileMenuButton />
+          <div className="flex flex-row items-center justify-between md:w-full mx-auto">
+            <h1 className="text-2xl font-bold mb-2 text-neutral-900 dark:text-neutral-100">
+              Profile settings
+            </h1>
+            <div className="flex md:hidden">
+              <MobileMenuButton />
+            </div>
           </div>
 
           <p className="text-sm text-muted-foreground mb-6">

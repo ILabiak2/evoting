@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useJoinPrivateElection } from "@/lib/hooks/useJoinElection";
 import { X, CheckCircle2 } from "lucide-react";
+import { MobileMenuButton } from "@/components/ui/mobile-menu-button";
 
 const ElectionType = {
   public_single_choice: "Public (Single Choice)",
@@ -65,13 +66,28 @@ export default function Dashboard() {
                   e.preventDefault();
                   router.push("/election-create");
                 }}
-                className="w-60 transform select-none text-center rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+                className="w-60 hidden md:inline transform select-none text-center rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
               >
                 Create election
               </a>
             )}
+            <div className="flex md:hidden">
+              <MobileMenuButton />
+            </div>
           </div>
         </div>
+        {user?.role === "creator" && (
+          <a
+            href="/election-create"
+            onClick={(e) => {
+              e.preventDefault();
+              router.push("/election-create");
+            }}
+            className="w-full inline md:hidden transform select-none text-center rounded-lg cursor-pointer border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+          >
+            Create election
+          </a>
+        )}
         {user?.role === "user" && elections?.length > 0 && (
           <div className="flex flex-row md:justify-end gap-4 mb-2 md:mb-5">
             <JoinElection />
@@ -172,7 +188,11 @@ const ElectionInfo = ({
                 </h3>
                 <div className="flex flex-row items-center">
                   <h3 className="-tracking-4 font-sans text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                    {isActive ? "Active" : startTime == 0 ? 'Not started' : "Ended"}
+                    {isActive
+                      ? "Active"
+                      : startTime == 0
+                        ? "Not started"
+                        : "Ended"}
                   </h3>
                   <span
                     className={`ml-3 inline-block h-3 w-3 rounded-full
