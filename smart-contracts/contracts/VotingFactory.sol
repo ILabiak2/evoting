@@ -59,6 +59,7 @@ contract VotingFactory is EIP712 {
 
     uint256 public electionCounter;
     mapping(uint256 => ElectionInfo) public elections;
+    mapping(address => uint256) private electionIdPlusOneByAddress; // 0 means not found
 
     bytes32 public constant ELECTION_TYPEHASH =
         keccak256(
@@ -137,12 +138,16 @@ contract VotingFactory is EIP712 {
             electionType = ElectionType.PrivateMulti;
         }
 
+        require(clone != address(0), "Invalid election type");
+
         elections[electionCounter] = ElectionInfo({
             contractAddress: clone,
             electionType: electionType,
             name: name,
             creator: _creator
         });
+
+        electionIdPlusOneByAddress[clone] = electionCounter + 1;
 
         emit ElectionCreated(
             electionCounter,
@@ -222,20 +227,13 @@ contract VotingFactory is EIP712 {
     function getElectionByAddress(
         address addr
     ) external view returns (UserElectionInfo memory info) {
-        uint256 id = type(uint256).max;
-        for (uint256 i = 0; i < electionCounter; i++) {
-            if (elections[i].contractAddress == addr) {
-                id = i;
-                break;
-            }
-        }
-        require(id != type(uint256).max, "Election not found");
+        uint256 idPlusOne = electionIdPlusOneByAddress[addr];
+        require(idPlusOne != 0, "Election not found");
+        uint256 id = idPlusOne - 1;
 
         FullElectionInfo memory full = _buildFullElectionInfo(id);
-
         bool isCreator = (elections[id].creator == msg.sender);
-        uint256[] memory votedIds = ElectionData(full.contractAddress)
-            .getVotedCandidateIds(msg.sender);
+        uint256[] memory votedIds = ElectionData(full.contractAddress).getVotedCandidateIds(msg.sender);
 
         info = UserElectionInfo({
             fullInfo: full,
