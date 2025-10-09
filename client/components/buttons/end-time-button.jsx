@@ -18,7 +18,6 @@ export const SetEndDateButton = ({ electionAddress, endTime }) => {
 
   useEffect(() => {
     if (endTime !== undefined && endTime !== 0) {
-      // Convert seconds to Date, then to local datetime string
       const d = new Date(endTime * 1000);
       setWhen(formatLocalInput(d));
     }
@@ -320,7 +319,6 @@ export const SetEndDateButton = ({ electionAddress, endTime }) => {
                               const isPast =
                                 dayDate <
                                 new Date(new Date().setHours(0, 0, 0, 0));
-                              // Only allow selection if not in the past
                               const isDisabled = isPast;
                               cells.push(
                                 <button

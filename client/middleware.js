@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export function middleware(req) {
   const { pathname, search } = req.nextUrl;
 
-  // Only proxy requests starting with /api/server/
   if (!pathname.startsWith('/api/server/')) return;
 
   const token = req.cookies.get('access_token')?.value;

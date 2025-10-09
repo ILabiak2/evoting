@@ -74,7 +74,6 @@ export class ElectionService {
         return;
       }
 
-      // Create a new metadata row
       await this.prisma.elections_metadata.create({
         data: {
           name,
@@ -290,14 +289,12 @@ export class ElectionService {
     while (created.length < target) {
       const remaining = target - created.length;
 
-      // 1) generate exactly how many you still need, dedupe in-memory
       const candidateSet = new Set<string>();
       while (candidateSet.size < remaining) {
         candidateSet.add(this.generateInviteCode(16));
       }
       const candidates = Array.from(candidateSet);
 
-      // 2) filter out any that already exist (global uniqueness on `code`)
       const existing = await this.prisma.invites.findMany({
         where: { code: { in: candidates } },
         select: { code: true },

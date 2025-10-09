@@ -24,7 +24,6 @@ export const useVoteInElection = () => {
             err += result.message;
           }
         } catch {
-          // ignore parse error
         }
         throw new Error(err);
       }

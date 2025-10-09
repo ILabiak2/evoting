@@ -60,11 +60,6 @@ contract VotingFactory is EIP712 {
     uint256 public electionCounter;
     mapping(uint256 => ElectionInfo) public elections;
 
-    // bytes32 public constant PUBLIC_ELECTION_TYPEHASH =
-    //     keccak256(
-    //         "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
-    //     );
-
     bytes32 public constant ELECTION_TYPEHASH =
         keccak256(
             "Election(string name,bool startImmediately,uint256 voterLimit,address creator)"
@@ -200,7 +195,6 @@ contract VotingFactory is EIP712 {
                 creator
             )
         );
-
         bytes32 digest = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(digest, signature);
 
@@ -286,7 +280,6 @@ contract VotingFactory is EIP712 {
         view
         returns (FullElectionInfo[] memory)
     {
-        // First, count how many are active
         uint256 activeCount = 0;
         for (uint256 i = 0; i < electionCounter; i++) {
             if (
@@ -298,7 +291,6 @@ contract VotingFactory is EIP712 {
             }
         }
 
-        // Then collect them
         FullElectionInfo[] memory result = new FullElectionInfo[](activeCount);
         uint256 idx = 0;
         for (uint256 i = 0; i < electionCounter; i++) {

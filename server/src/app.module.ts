@@ -9,8 +9,8 @@ import { ElectionModule } from './election/election.module';
   imports: [
     AuthModule,
     ConfigModule.forRoot({
-      isGlobal: true, // Makes config available everywhere
-      envFilePath: '.env', // Path to your .env file
+      isGlobal: true,
+      envFilePath: '.env',
     }),
     ElectionModule,
   ],

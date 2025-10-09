@@ -15,7 +15,6 @@ export const useGenerateInvites = () => {
             const result = await res.json();
             message = result?.message || message;
           } catch {
-            // ignore
           }
           throw new Error(message);
         }

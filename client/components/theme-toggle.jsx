@@ -16,7 +16,6 @@ export function ThemeToggle() {
     }, [])
 
 
-    // Toggle theme
     const toggleTheme = () => {
         const newTheme = !isDark
         setIsDark(newTheme)

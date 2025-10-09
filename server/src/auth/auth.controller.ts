@@ -45,7 +45,6 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @Get('google')
   async googleAuth() {
-    // Google redirects to this URL
   }
 
   @UseGuards(AuthGuard('google'))

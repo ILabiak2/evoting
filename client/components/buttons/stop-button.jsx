@@ -96,7 +96,6 @@ export const StopButton = ({ electionAddress }) => {
                 {errorMessage}
               </div>
             ) : !txHash ? (
-              // Confirmation UI before sending the tx
               <div className="text-sm space-y-4">
                 <p>Are you sure you want to end this election? This action will stop further voting.</p>
                 <div className="flex justify-end gap-2">
@@ -141,7 +140,7 @@ export const StopButton = ({ electionAddress }) => {
                 {statusError?.message || "Unable to fetch transaction status."}
               </div>
             ) : (
-              // Confirmed success
+              // success
               <div className="text-sm space-y-1">
                 <div className="inline-flex items-center gap-2 text-green-600 font-medium">
                   <Check className="h-5 w-5" />

@@ -24,7 +24,6 @@ export const useChangePassword = () => {
             message = data?.message || message;
           }
         } catch {
-          // ignore JSON parse errors
         }
         throw new Error(message);
       }

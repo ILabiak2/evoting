@@ -46,10 +46,6 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
     bytes32 public constant AUTH_TYPEHASH =
         keccak256("Auth(uint256 electionId,address voter)");
 
-    // ------------------------
-    // Voting Logic
-    // ------------------------
-
     function _internalVote(
         uint256 _candidateId,
         address _voter
@@ -58,7 +54,6 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         if (endTime > 0 && block.timestamp > endTime) {
             isActive = false;
             ended = true;
-            // revert("Election has ended");
             emit ElectionEnded((electionId));
             return;
         }
@@ -76,7 +71,6 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
         voterCount++;
         electionVoters.push(_voter);
 
-        // Якщо ліміт досягнуто — завершуємо
         if (voterLimit > 0 && voterCount >= voterLimit) {
             isActive = false;
             ended = true;
@@ -118,10 +112,6 @@ contract PublicElection is BaseElection, EIP712Upgradeable {
 
         _internalVote(_candidateId, _voter);
     }
-
-    // ------------------------
-    // Getters
-    // ------------------------
 
     function getMyVote()
         external

@@ -125,7 +125,7 @@ abstract contract BaseElection {
             started = false;
         }
 
-        endTime = 0; // Not set at creation
+        endTime = 0;
 
         _addCandidates(_candidateNames);
     }
@@ -209,7 +209,6 @@ abstract contract BaseElection {
         candidateNameExists[nameHash] = false;
         emit CandidateRemoved(electionId, candidateId, c.name);
 
-        // Shift candidates array by replacing with last element
         for (uint256 i = candidateId; i < candidates.length - 1; i++) {
             candidates[i] = candidates[i + 1];
             candidates[i].id = i;
@@ -306,7 +305,6 @@ abstract contract BaseElection {
         address _voter
     ) internal virtual;
 
-    // === SIGNATURE UTIL ===
 
     function recoverSigner(
         bytes32 _ethSignedMessageHash,

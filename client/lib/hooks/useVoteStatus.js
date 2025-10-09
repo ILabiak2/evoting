@@ -21,10 +21,8 @@ export const useVoteStatus = (txHash, electionAddress) => {
     refetchOnReconnect: false,
   });
 
-  // React to confirmation changes
   useEffect(() => {
     if (query.data?.confirmed && electionAddress) {
-      // Mark stale and immediately refetch active instances of this election query
       qc.invalidateQueries({ queryKey: ["election", electionAddress], exact: true });
       // qc.refetchQueries({ queryKey: ["election", electionAddress], type: "active", exact: true });
     }

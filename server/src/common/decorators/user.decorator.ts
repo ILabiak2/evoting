@@ -5,7 +5,6 @@ export const User = createParamDecorator(
       const request = ctx.switchToHttp().getRequest();
       const user = request.user;
   
-      // If a specific property was requested, return that
       return data ? user?.[data] : user;
     },
   );

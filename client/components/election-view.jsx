@@ -76,13 +76,11 @@ export default function ElectionView({ address }) {
     navigator.clipboard.writeText(text);
   };
 
-  // Multi-choice UX state
   const isMulti = String(election?.electionType || "").includes("multi");
   const maxChoices = Number(election?.maxChoicesPerVoter || 0) || 0;
   const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    // Reset selection when election changes
     setSelectedIds([]);
   }, [election?.contractAddress]);
 

@@ -5,7 +5,6 @@ const { globSync } = require("glob");
 const outDir = process.argv[2] || "../server/src/blockchain/_abi";
 mkdirSync(outDir, { recursive: true });
 
-// Find all artifact JSONs (no top-level await)
 const files = globSync("artifacts/contracts/**/*.json", { nodir: true });
 
 let exported = 0;

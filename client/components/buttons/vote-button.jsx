@@ -28,7 +28,6 @@ export const VoteButton = ({
 
   const handleOpenConfirm = () => {
     if (disabled) return;
-    // reset any previous state and open confirmation dialog
     setErrorMessage("");
     setTxHash(null);
     setOpen(true);

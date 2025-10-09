@@ -99,7 +99,6 @@ export const StartButton = ({ electionAddress }) => {
                 {errorMessage}
               </div>
             ) : !txHash ? (
-              // Confirmation UI before sending the tx
               <div className="text-sm space-y-4">
                 <p>
                   Are you sure you want to start this election? This action will
@@ -122,7 +121,6 @@ export const StartButton = ({ electionAddress }) => {
                 </div>
               </div>
             ) : !confirmed ? (
-              // Pending state after tx sent
               <div className="flex items-center gap-3">
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
                 <div className="text-sm">
@@ -147,7 +145,7 @@ export const StartButton = ({ electionAddress }) => {
                 {statusError?.message || "Unable to fetch transaction status."}
               </div>
             ) : (
-              // Confirmed success
+              // success
               <div className="text-sm space-y-1">
                 <div className="inline-flex items-center gap-2 text-green-600 font-medium">
                   <Check className="h-5 w-5" />

@@ -50,11 +50,6 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
             "Vote(uint256 electionId,uint256[] candidateIds,address voter)"
         );
 
-    // ------------ Core voting logic ------------
-    /**
-     * @dev BaseElection expects this signature, but this contract is multi-choice.
-     *      We forbid the single-candidate path to avoid confusion.
-     */
     function _internalVote(
         uint256 /*_candidateId*/,
         address /*_voter*/
@@ -70,7 +65,6 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
         if (endTime > 0 && block.timestamp > endTime) {
             isActive = false;
             ended = true;
-            // revert("Election has ended");
             emit ElectionEnded((electionId));
             return;
         }
@@ -105,7 +99,6 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
         voterCount += 1;
         electionVoters.push(_voter);
 
-        // Якщо ліміт досягнуто — завершуємо
         if (voterLimit > 0 && voterCount >= voterLimit) {
             isActive = false;
             ended = true;
@@ -125,11 +118,6 @@ contract PublicElectionMulti is BaseElection, EIP712Upgradeable {
         address _voter,
         bytes memory voterSignature
     ) external virtual {
-        // Vote memory voteData = Vote({
-        //     electionId: electionId,
-        //     candidateIds: _candidateIds,
-        //     voter: _voter
-        // });
         bytes32 candidateIdsHash = keccak256(abi.encodePacked(_candidateIds));
 
         bytes32 structHash = keccak256(
