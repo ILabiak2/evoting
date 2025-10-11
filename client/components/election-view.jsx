@@ -30,47 +30,47 @@ const ElectionType = {
 export default function ElectionView({ address }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { data: election, isLoading, error } = useElectionData(address);
-  // const election = {
-  //   id: 2,
-  //   name: "Manager election",
-  //   createdAt: 1757248125,
-  //   startTime: 1757248125,
-  //   endTime: 1757687152,
-  //   creator: "0x076bC5E783c557287A88a1Ee427b0fbf3E17c5bF",
-  //   isActive: false,
-  //   started: true,
-  //   ended: true,
-  //   candidateCount: 2,
-  //   voterLimit: 0,
-  //   electionType: "public_single_choice",
-  //   contractAddress: "0x2F78f1525C2356847713D7DF0E547263CD56f835",
-  //   candidates: [
-  //     {
-  //       id: 0,
-  //       name: "Alice Johnson",
-  //       votes: 331,
-  //     },
-  //     {
-  //       id: 1,
-  //       name: "Bob Smith",
-  //       votes: 820,
-  //     },
-  //     {
-  //       id: 2,
-  //       name: "Den Krason",
-  //       votes: 430,
-  //     },
-  //   ],
-  //   totalVotes: 1581,
-  //   maxChoicesPerVoter: 1,
-  //   hasVoted: false,
-  //   isCreator: true,
-  //   votedCandidateIds: [],
-  //   isParticipant: false,
-  // };
-  // const isLoading = false;
-  // const error = true;
+  // const { data: election, isLoading, error } = useElectionData(address);
+  const election = {
+    id: 2,
+    name: "Manager election",
+    createdAt: 1757248125,
+    startTime: 1757248125,
+    endTime: 1757687152,
+    creator: "0x076bC5E783c557287A88a1Ee427b0fbf3E17c5bF",
+    isActive: false,
+    started: true,
+    ended: true,
+    candidateCount: 2,
+    voterLimit: 0,
+    electionType: "public_single_choice",
+    contractAddress: "0x2F78f1525C2356847713D7DF0E547263CD56f835",
+    candidates: [
+      {
+        id: 0,
+        name: "Alice Johnson",
+        votes: 331,
+      },
+      {
+        id: 1,
+        name: "Bob Smith",
+        votes: 820,
+      },
+      {
+        id: 2,
+        name: "Den Krason",
+        votes: 430,
+      },
+    ],
+    totalVotes: 1581,
+    maxChoicesPerVoter: 1,
+    hasVoted: false,
+    isCreator: true,
+    votedCandidateIds: [],
+    isParticipant: false,
+  };
+  const isLoading = false;
+  const error = false;
 
   const handleCopyAddress = (text) => {
     navigator.clipboard.writeText(text);

@@ -157,14 +157,14 @@ abstract contract BaseElection {
 
     function addCandidates(
         string[] memory _names
-    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
+    ) external virtual onlyCreatorOrAdmin(electionId) onlyBeforeStart {
         _addCandidates(_names);
     }
 
     function editCandidateName(
         uint256 candidateId,
         string calldata newName
-    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
+    ) external virtual onlyCreatorOrAdmin(electionId) onlyBeforeStart {
         require(candidateId < candidates.length, "Invalid candidate");
         require(bytes(newName).length > 0, "Empty name");
 
@@ -201,7 +201,7 @@ abstract contract BaseElection {
 
     function removeCandidate(
         uint256 candidateId
-    ) external onlyCreatorOrAdmin(electionId) onlyBeforeStart {
+    ) external virtual onlyCreatorOrAdmin(electionId) onlyBeforeStart {
         require(candidateId < candidates.length, "Invalid candidate");
 
         Candidate memory c = candidates[candidateId];

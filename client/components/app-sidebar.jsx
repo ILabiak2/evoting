@@ -50,7 +50,7 @@ export default function AppSidebar({ children }) {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w flex-1 flex-col overflow-hidden border border-sidebar-border bg-sidebar-primary md:flex-row dark:border-neutral-700",
+        "mx-auto flex w-full max-w flex-1 flex-col overflow-hidden md:border border-sidebar-border bg-sidebar-primary md:flex-row dark:border-neutral-700",
         "h-screen"
       )}
     >
