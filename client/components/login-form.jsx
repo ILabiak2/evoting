@@ -50,7 +50,11 @@ export default function Login() {
 
       if (res.status === 201) {
         const data = await res.json();
-        document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Max-Age=1296000`;
+        const isProduction =
+        process.env.NEXT_PUBLIC_NODE_ENV === "production" ||
+        process.env.NODE_ENV === "production";
+      document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Max-Age=1296000${isProduction ? "; Secure" : ""}`;
+        // document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Max-Age=1296000`;
         router.push('/dashboard')
       } else {
         let data = await res.json()
