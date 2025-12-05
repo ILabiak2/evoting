@@ -59,7 +59,7 @@ export class AuthController {
     res.cookie('access_token', tokenData.access_token, {
       httpOnly: isProd, // ❗️Зроби true у production
       secure: isProd, // ❗️true у production з HTTPS
-      sameSite: 'Lax',
+      sameSite: isProd ? 'None' : 'Lax',
       path: '/',
       maxAge: 1000 * 60 * 60 * 24 * 15, // 15 днів
     });
