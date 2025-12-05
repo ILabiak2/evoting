@@ -14,7 +14,7 @@ export default function AfterAuthPage() {
       const params = new URLSearchParams(window.location.search);
       const token = params.get("token");
       if (token) {
-        const isProd = process.env.NODE_ENV === "production";
+        const isProd = process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_NODE_ENV === "production";
 
         let cookieStr = `access_token=${token}; path=/; max-age=${60 * 60 * 24 * 15}; samesite=lax`;
 
