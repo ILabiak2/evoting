@@ -53,10 +53,12 @@ export class AuthController {
     // Генерація токена та отримання користувача
     const tokenData = await this.authService.validateOAuthLogin(req.user);
 
+    const isProd = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_NODE_ENV === 'production';
+
     // Встановлюємо cookie з токеном (можна зробити httpOnly: true в production)
     res.cookie('access_token', tokenData.access_token, {
-      httpOnly: false, // ❗️Зроби true у production
-      secure: false, // ❗️true у production з HTTPS
+      httpOnly: isProd, // ❗️Зроби true у production
+      secure: isProd, // ❗️true у production з HTTPS
       sameSite: 'Lax',
       path: '/',
       maxAge: 1000 * 60 * 60 * 24 * 15, // 15 днів
