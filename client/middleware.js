@@ -17,7 +17,7 @@ export function middleware(req) {
     requestHeaders.set('Authorization', `Bearer ${token}`);
   }
 
-  console.log('backendUrl', backendUrl);
+  // console.log('backendUrl', backendUrl);
   return NextResponse.rewrite(backendUrl, {
     request: {
       headers: requestHeaders,

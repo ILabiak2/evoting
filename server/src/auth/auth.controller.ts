@@ -52,20 +52,21 @@ export class AuthController {
   async googleAuthRedirect(@Req() req, @Res() res) {
     // Генерація токена та отримання користувача
     const tokenData = await this.authService.validateOAuthLogin(req.user);
+    console.log('tokenData', tokenData);
 
-    const isProd = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_NODE_ENV === 'production';
+    // const isProd = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_NODE_ENV === 'production';
 
     // Встановлюємо cookie з токеном (можна зробити httpOnly: true в production)
-    res.cookie('access_token', tokenData.access_token, {
-      httpOnly: isProd, // ❗️Зроби true у production
-      secure: isProd, // ❗️true у production з HTTPS
-      sameSite: isProd ? 'None' : 'Lax',
-      path: '/',
-      maxAge: 1000 * 60 * 60 * 24 * 15, // 15 днів
-      domain: isProd ? new URL(process.env.CLIENT_HOST).hostname : undefined,
-    });
+    // res.cookie('access_token', tokenData.access_token, {
+    //   httpOnly: isProd, // ❗️Зроби true у production
+    //   secure: isProd, // ❗️true у production з HTTPS
+    //   sameSite: isProd ? 'None' : 'Lax',
+    //   path: '/',
+    //   maxAge: 1000 * 60 * 60 * 24 * 15, // 15 днів
+    //   domain: isProd ? new URL(process.env.CLIENT_HOST).hostname : undefined,
+    // });
 
     // Редірект назад у фронтенд (Next.js)
-    res.redirect(`${process.env.CLIENT_HOST}/after-auth`);
+    res.redirect(`${process.env.CLIENT_HOST}/after-auth?token=${tokenData.access_token}`);
   }
 }
