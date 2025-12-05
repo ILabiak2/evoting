@@ -62,6 +62,7 @@ export class AuthController {
       sameSite: isProd ? 'None' : 'Lax',
       path: '/',
       maxAge: 1000 * 60 * 60 * 24 * 15, // 15 днів
+      domain: isProd ? new URL(process.env.CLIENT_HOST).hostname : undefined,
     });
 
     // Редірект назад у фронтенд (Next.js)
