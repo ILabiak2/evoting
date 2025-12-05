@@ -7,7 +7,7 @@ export function middleware(req) {
 
   const token = req.cookies.get('access_token')?.value;
 
-  const backendUrl = `${process.env.SERVER_HOST}${pathname.replace(
+  const backendUrl = `${process.env.NEXT_PUBLIC_SERVER_HOST}${pathname.replace(
     '/api/server',
     '',
   )}${search}`;
